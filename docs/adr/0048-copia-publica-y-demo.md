@@ -123,3 +123,53 @@ La persona revisó la v1.0.0 publicada y pidió cinco cambios, en un commit nuev
    fechas de cada idioma. Los motivos conocidos del diario se traducen solo al mostrarlos; el diario no cambia. La demo
    pública genera cuatro páginas: `/` y `/plan-b/` en inglés, y `/es/` y `/plan-b/es/` en español. El selector son
    enlaces entre ellas, así que la CSP no cambia de forma y el script de la página es el mismo texto, con el mismo hash.
+
+## Fuente de verdad y exportación (decisión de la persona, 2026-10-28)
+
+El repositorio privado es la **fuente de verdad**. El código del paso 49 (demo, idiomas, tarjeta de reproducción, bot de
+plan B, CI, pruebas y este ADR) se trajo a él en un commit propio. Allí, `forward-check`, `reproduce` y `pbo-ronda`
+siguen usando las salidas completas.
+
+`jp-quant` ya no se desarrolla directamente: se actualiza en cada versión con `scripts/export-public.ts` y la lista de
+`docs/EXPORT_PUBLIC.md`. El script aplica el filtro de este ADR:
+- deja fuera lo privado;
+- ajusta los textos;
+- endurece los permisos;
+- reduce las salidas;
+- pone las pruebas públicas con huella de su origen.
+
+`test/scripts/export-public.test.ts` comprueba en el privado que el filtro sigue valiendo. Esto sustituye a la
+consecuencia anterior («el trabajo nuevo vive en la copia pública»).
+
+## v1.1: herramienta para usuarios (cierre del paso 49; 2026-10-28)
+
+1. **Sandbox fuera de `src/`** (`sandbox/`, `examples/`; INV-14a), con `npm run test-strategy`:
+   - la estrategia del usuario sigue el mismo contrato puro (`sandbox/define.ts`) y pasa por el mismo `backtestRunner`
+     (walk-forward con purging y embargo, costes mínimos de quant-research §5, DSR, PBO, 1000 colocaciones de control y
+     los criterios congelados);
+   - los tramos se arman solos: la segunda mitad de los datos, en 5 validaciones, y el purging y el embargo, iguales al
+     calentamiento;
+   - el par del usuario se llama internamente BTC/EUR, porque el ejecutor mide con ese par el régimen y el buy-and-hold.
+2. **Registro local aparte** (`sandbox-runs/registry.jsonl`, ignorado por git). Cada ejecución suma configuraciones y
+   variantes de robustez a la N local de esa estrategia; nunca al registro oficial, a su N ni a los criterios congelados.
+   Una prueba lo garantiza.
+3. **Veredicto llano.** Responde solo a «¿ventaja o suerte?»:
+   - datos insuficientes, con menos de 100 operaciones fuera de muestra, o con un Sharpe positivo que no cumple A.3.5;
+   - suerte, si falla A.3.1, el DSR (menos de 0,95), A.3.11, A.3.12 o, con 3 o más configuraciones, A.3.6;
+   - ventaja, si pasa todo eso.
+
+   El veredicto de todos los criterios va aparte, porque con datos propios el régimen, la ablación y el universo
+   alternativo quedan sin medir.
+4. **Ejemplos y datos:** un CSV sintético con semilla (2018 a 2024) y `examples/coin-flip.ts`, un control negativo que
+   debe salir «suerte». `npm run fetch-candles` es opcional: hace un solo GET al endpoint público de OHLC de Kraken, sin
+   clave, y avisa de que los datos no se redistribuyen.
+5. **«¿Suerte o ventaja?» como ilustración.** El registro real solo guardó las cifras del control (percentil, p95), no
+   las curvas. Dibujar bandas reales exigiría relanzar el control sobre datos de Kraken, y unas bandas derivadas de sus
+   precios se acercan a SEC-02. La demo dibuja el abanico del replay sintético con `controlCurves`, etiquetado como
+   ilustración, y lista las cifras reales de EXP-0027 y EXP-0028. No toca lo congelado del ADR 0043.
+6. **Esfera:** separación mínima de 32 px entre etiquetas y nombres de familia legibles en inglés; los ids del registro no
+   cambian.
+7. **«Plan B» pasa a llamarse Autopilot** (DCA pasivo y rebalanceo) en comandos (`demo:autopilot`, con `demo:dca` como
+   alias), páginas (`/autopilot/`), README y documentos públicos. Los documentos internos históricos y la clave `planB`
+   del formato de la ficha conservan el nombre anterior; `docs/README.md` y el CHANGELOG dan la equivalencia.
+8. **Hoja de ruta:** la ejecución real del Autopilot pasa a la v1.2, tras sus propias comprobaciones de seguridad.

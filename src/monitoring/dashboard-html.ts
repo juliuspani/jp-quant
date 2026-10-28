@@ -18,7 +18,7 @@ import {
 import { lang, phrase, t } from './i18n.ts';
 import { PAGE_SCRIPT, PAGE_SCRIPT_HASH } from './page-script.ts';
 import { playbackCard } from './playback-html.ts';
-import { experimentsCard, funnelCards, luckCards, MAX_LUCK_TABS, RECENT_EXPERIMENTS, researchBrief, sphereCard } from './research-html.ts';
+import { experimentsCard, funnelCards, luckCards, type LuckIllustration, MAX_LUCK_TABS, RECENT_EXPERIMENTS, researchBrief, sphereCard } from './research-html.ts';
 import type { ResearchSnapshot } from './research.ts';
 import { FIRST_COMMIT, PROJECT_NAME, sealFavicon, sealSvg } from './seal.ts';
 
@@ -39,7 +39,8 @@ export interface DashboardPage {
   readonly commit: string | null; // hash corto del último commit, si se conoce
   readonly languages?: { readonly es: string; readonly en: string }; // enlaces del selector de idioma; sin ellos, no hay selector
   readonly planB?: DashboardSnapshot; // el replay del bot de plan B, para su tarjeta (demo pública)
-  readonly planBLink?: string; // enlace a la página completa del bot de plan B
+  readonly luckIllustration?: LuckIllustration; // abanico ilustrativo con el replay sintético, si el registro no guardó curvas
+  readonly planBLink?: string; // enlace a la página completa del Autopilot (antes «bot de plan B»)
 }
 
 const CSS = `
@@ -418,15 +419,16 @@ ${table([{ label: t('Fecha', 'Date'), key: true }, { label: t('Nivel', 'Level'),
 }
 
 /**
- * La tarjeta del plan B. Con `source` (la demo pública), sus cifras salen del replay del bot de plan B y no del diario de
+ * La tarjeta del Autopilot (DCA pasivo y rebalanceo; antes «plan B»; en el código y en la ficha sigue llamándose planB).
+ * Con `source` (la demo pública), sus cifras salen del replay del Autopilot y no del diario de
  * la estrategia; sin reparto objetivo, un estado vacío que explica por qué.
  */
 function planB(page: DashboardPage, s: DashboardSnapshot): string {
   const source = page.planB ?? s;
   const p = source.planB;
   const q = source.quoteCurrency;
-  const link = page.planBLink === undefined ? '' : ` <a href="${e(page.planBLink)}">${t('Ver el replay completo del bot de plan B', 'See the full replay of the plan B bot')}</a>`;
-  if (!p.hasTarget) return `<section class="card wide"><h2>Plan B</h2><p class="lede">${e(t('Este diario no tiene reparto objetivo: es el de una estrategia, no el del bot de plan B (compras periódicas y rebalanceo). El proyecto no fija ni recomienda ningún reparto.', 'This journal has no target allocation: it belongs to a strategy, not to the plan B bot (regular purchases and rebalancing). The project does not set or recommend any allocation.'))}${link}</p></section>`;
+  const link = page.planBLink === undefined ? '' : ` <a href="${e(page.planBLink)}">${t('Ver el replay completo del Autopilot', 'See the full Autopilot replay')}</a>`;
+  if (!p.hasTarget) return `<section class="card wide"><h2>Autopilot<span class="tech">${t('DCA pasivo y rebalanceo', 'passive DCA & rebalancing')}</span></h2><p class="lede">${e(t('Este diario no tiene reparto objetivo: es el de una estrategia, no el del Autopilot (compras periódicas y rebalanceo). El proyecto no fija ni recomienda ningún reparto.', 'This journal has no target allocation: it belongs to a strategy, not to the Autopilot (regular purchases and rebalancing). The project does not set or recommend any allocation.'))}${link}</p></section>`;
   const width = 200;
   const rows = p.allocation.map((row) => {
     const bar = (fractionText: string | null, cls: string, y: number): string => {
@@ -440,8 +442,8 @@ function planB(page: DashboardPage, s: DashboardSnapshot): string {
       row.deviation === null ? '—' : delta(decimalSign(row.deviation), percent(row.deviation)), svg,
     ];
   });
-  const origin = page.planB === undefined ? '' : `<p class="note">${e(t(`Del replay del bot de plan B con datos sintéticos (${source.label}).`, `From the plan B bot replay on synthetic data (${source.label}).`))}${link}</p>`;
-  return `<section class="card wide">${head('Plan B', t('Lo aportado y el reparto actual frente al objetivo.', 'Money put in and the current allocation against the target.'))}
+  const origin = page.planB === undefined ? '' : `<p class="note">${e(t(`Del replay del Autopilot con datos sintéticos (${source.label}).`, `From the Autopilot replay on synthetic data (${source.label}).`))}${link}</p>`;
+  return `<section class="card wide">${head('Autopilot', t('DCA pasivo y rebalanceo: lo aportado y el reparto actual frente al objetivo. No intenta batir al mercado.', 'Passive DCA & rebalancing: money put in and the current allocation against the target. It does not try to beat the market.'), t('DCA pasivo y rebalanceo', 'passive DCA & rebalancing'))}
 ${origin}
 <div class="kpis">
 ${kpi(t('Aportado', 'Put in'), withCurrency(money(p.contributions), q), e(p.contributionsNote))}
@@ -504,13 +506,13 @@ ${replay}${registry}
 
 /**
  * Solo con datos sintéticos: unas líneas para quien llega de fuera. Con registro, Investigación y Criterios son el registro
- * real del estudio (paso 49: no lleva precios); el replay y el plan B son sintéticos.
+ * real del estudio (paso 49: no lleva precios); el replay y el Autopilot son sintéticos.
  */
 function intro(withResearch: boolean): string {
   return t(
-    `<section class="intro"><p><strong>JP Quant</strong> es una consola de investigación cuantitativa en cripto: cada estrategia se registra antes de probarla y se juzga con criterios fijados de antemano. El replay y el plan B usan <strong>datos sintéticos de demostración</strong>${withResearch ? '; Investigación y Criterios muestran el <strong>registro real</strong> del estudio, en el que ninguna estrategia ha sido aprobada' : ''}.</p>
+    `<section class="intro"><p><strong>JP Quant</strong> es una consola de investigación cuantitativa en cripto: cada estrategia se registra antes de probarla y se juzga con criterios fijados de antemano. El replay y el Autopilot usan <strong>datos sintéticos de demostración</strong>${withResearch ? '; Investigación y Criterios muestran el <strong>registro real</strong> del estudio, en el que ninguna estrategia ha sido aprobada' : ''}.</p>
 <p>Lee de arriba abajo: Resumen dice cómo va el replay; en Investigación cada punto es un experimento; Criterios cuenta cuántos superan cada criterio y por qué fallan. Los datos sintéticos traen a propósito un hueco en ETH/EUR, para que se vea cómo lo detecta el sistema.</p></section>`,
-    `<section class="intro"><p><strong>JP Quant</strong> is a quantitative crypto research console: every strategy is registered before it is tested and judged against criteria fixed in advance. The replay and the plan B use <strong>synthetic demo data</strong>${withResearch ? '; Research and Criteria show the <strong>real registry</strong> of the study, in which no strategy has been approved' : ''}.</p>
+    `<section class="intro"><p><strong>JP Quant</strong> is a quantitative crypto research console: every strategy is registered before it is tested and judged against criteria fixed in advance. The replay and the Autopilot use <strong>synthetic demo data</strong>${withResearch ? '; Research and Criteria show the <strong>real registry</strong> of the study, in which no strategy has been approved' : ''}.</p>
 <p>Read from top to bottom: Overview shows how the replay is doing; in Research each dot is an experiment; Criteria counts how many pass each criterion and why they fail. The synthetic data has a deliberate gap in ETH/EUR, to show that the system detects it.</p></section>`,
   );
 }
@@ -570,7 +572,7 @@ ${researchSummary(research)}
 </section>
 <section class="view" id="investigacion">
 ${viewHead(t('Investigación', 'Research'), 'Experiment Registry')}
-${research === null ? noResearch(t('Núcleo del registro', 'Registry core')) : `${sphereCard(research)}\n${luckCards(research)}\n${experimentsCard(research)}`}
+${research === null ? noResearch(t('Núcleo del registro', 'Registry core')) : `${sphereCard(research)}\n${luckCards(research, page.luckIllustration)}\n${experimentsCard(research)}`}
 </section>
 <section class="view" id="replay">
 ${viewHead('Replay', `${label} · run ${s.runId} · ${String(s.health.events)} ${t('eventos', 'events')}`)}

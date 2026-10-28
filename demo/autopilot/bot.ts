@@ -1,4 +1,4 @@
-// Bot de plan B: compras periódicas (DCA) y rebalanceo por bandas, en paper (paso 49, ADR 0048). Es un ejemplo de uso del
+// Autopilot (antes «Autopilot»): compras periódicas (DCA pasivo) y rebalanceo por bandas, en paper (paso 49, ADR 0048). Es un ejemplo de uso del
 // sistema de ejecución, no una estrategia de investigación: no busca ventaja, reparte la entrada en el tiempo hacia un
 // reparto objetivo que fija quien lo usa. El proyecto no recomienda ningún reparto.
 // - Compone lo mismo que app/trading-system.ts (normalizador, cartera, Risk y Execution), pero en lugar de una estrategia
@@ -31,10 +31,10 @@ import type { SymbolId } from '../../src/shared/symbol.ts';
 import type { UtcMillis } from '../../src/shared/time.ts';
 import type { Journal } from '../../src/app/trading-system.ts';
 
-export const PLAN_B_ID = 'plan-b-dca-rebalanceo';
-export const PLAN_B_VERSION = '1.0.0';
+export const AUTOPILOT_ID = 'autopilot-dca-rebalanceo';
+export const AUTOPILOT_VERSION = '1.0.0';
 
-export interface PlanBPlan {
+export interface AutopilotPlan {
   readonly target: Readonly<Record<SymbolId, string>>; // fracción del patrimonio por par, en texto decimal
   readonly contribution: string; // importe de cada compra periódica, repartido según el objetivo
   readonly everyMs: number; // cada cuánto se compra
@@ -43,7 +43,7 @@ export interface PlanBPlan {
   readonly stopFraction: string; // distancia del stop de protección bajo el precio medio de entrada
 }
 
-export interface PlanBConfig {
+export interface AutopilotConfig {
   readonly clock: Clock;
   readonly intentIds: Ids;
   readonly approvalIds: Ids; // UUID: el approval_id da el client order ID
@@ -57,7 +57,7 @@ export interface PlanBConfig {
   readonly orderTtlMs: number;
   readonly startAt: UtcMillis; // primera compra y primera revisión
   readonly journal: Journal;
-  readonly plan: PlanBPlan;
+  readonly plan: AutopilotPlan;
 }
 
 type Role = 'buy' | 'sell' | 'stop';
@@ -78,12 +78,12 @@ const ZERO = Decimal.parse('0');
 const ONE = Decimal.parse('1');
 const SCALE = 12;
 
-export class PlanBBot {
+export class AutopilotBot {
   readonly market = new MarketDataNormalizer();
   readonly portfolio: PortfolioLedger;
   readonly risk: RiskEngine;
   readonly execution: ExecutionEngine;
-  readonly #config: PlanBConfig;
+  readonly #config: AutopilotConfig;
   readonly #target: ReadonlyMap<SymbolId, Decimal>;
   readonly #targetTotal: Decimal;
   readonly #orders = new Map<string, OrderContext>();
@@ -96,7 +96,7 @@ export class PlanBBot {
   #killSwitchSeen = false;
   #halted: string | null = null;
 
-  constructor(config: PlanBConfig) {
+  constructor(config: AutopilotConfig) {
     const plan = config.plan;
     const target = new Map<SymbolId, Decimal>();
     for (const [symbol, text] of Object.entries(plan.target)) target.set(symbol, Decimal.parse(text));
@@ -260,7 +260,7 @@ export class PlanBBot {
   }
 
   #base(symbol: SymbolId, reason: string, signalTime: UtcMillis): Pick<OrderIntent, 'intentId' | 'origin' | 'strategyId' | 'strategyVersion' | 'bucket' | 'symbol' | 'reason' | 'signalTime'> {
-    return { intentId: this.#config.intentIds.next(), origin: 'system', strategyId: PLAN_B_ID, strategyVersion: PLAN_B_VERSION, bucket: 'core', symbol, reason, signalTime };
+    return { intentId: this.#config.intentIds.next(), origin: 'system', strategyId: AUTOPILOT_ID, strategyVersion: AUTOPILOT_VERSION, bucket: 'core', symbol, reason, signalTime };
   }
 
   #entry(symbol: SymbolId, quantity: Quantity, stop: Price, candle: Candle, reason: string): OrderIntent {

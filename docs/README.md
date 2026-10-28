@@ -21,7 +21,7 @@ each document is for, in English.
 |---|---|
 | [PROMOTION_CRITERIA.md](PROMOTION_CRITERIA.md) | The frozen criteria a strategy has to pass, with their SHA-256 checked by tests |
 | [PRE_LIVE_GATE.md](PRE_LIVE_GATE.md) | The gate that would come before any real money (never reached) |
-| [DECISION_POINT.md](DECISION_POINT.md) | Step 31: the result per strategy, every failing criterion and the plan B |
+| [DECISION_POINT.md](DECISION_POINT.md) | Step 31: the result per strategy, every failing criterion and the plan B (now the Autopilot) |
 | [research/experiments/](research/experiments/) | The experiment registry (`registry.jsonl`), one report per experiment and their outputs |
 | [research/](research/) | Earlier research notes: strategies, data sources, infrastructure and exchanges |
 | [audits/](audits/) | The internal quant audit of the first round |
@@ -50,6 +50,11 @@ each document is for, in English.
 | `RECHAZADA` | rejected |
 | diario | journal (the replay's event log) |
 | ficha | run card (the metadata a dashboard page is built from) |
+
+## Names that changed
+
+"Plan B" (and "bot de plan B") is the old name of the **Autopilot**, the passive DCA & rebalancing bot. Older documents
+and ADRs keep the old name; the card format still uses the key `planB`.
 
 ## Private records
 

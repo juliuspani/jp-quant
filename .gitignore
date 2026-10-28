@@ -40,3 +40,6 @@ logs/
 
 # Demo estática generada para GitHub Pages (npm run demo -- --static site)
 site/
+
+# Ejecuciones locales del sandbox (npm run test-strategy): registro local e informes
+sandbox-runs/

@@ -1,4 +1,4 @@
-// Replay del bot de plan B (paso 49, ADR 0048): el bot de demo/dca/bot.ts sobre los mismos precios sintéticos de la demo,
+// Replay del Autopilot (antes «Autopilot»; paso 49, ADR 0048): el bot de demo/autopilot/bot.ts sobre los mismos precios sintéticos de la demo,
 // con el venue simulado, el reloj del replay y los almacenes en memoria del backtester. Determinista: la misma semilla da
 // el mismo diario. Vive en demo/, fuera de src/, como el replay de la demo (INV-14a): no es un resultado de investigación.
 // El reparto objetivo es un ejemplo para la demostración, no una recomendación.
@@ -18,16 +18,16 @@ import { canonicalJson } from '../../src/shared/canonical.ts';
 import { Decimal } from '../../src/shared/decimal.ts';
 import { timeframeMs, toUtcIso, type UtcMillis } from '../../src/shared/time.ts';
 import { DEMO_COSTS, DEMO_SEED, DEMO_T0, demoCandles } from '../replay.ts';
-import { PLAN_B_ID, PLAN_B_VERSION, PlanBBot, type PlanBPlan } from './bot.ts';
+import { AUTOPILOT_ID, AUTOPILOT_VERSION, AutopilotBot, type AutopilotPlan } from './bot.ts';
 
 const DAY = timeframeMs('1d');
 const START = (DEMO_T0 + 20 * DAY) as UtcMillis; // con unas velas antes, para que haya precio al empezar
 const END = (DEMO_T0 + 151 * DAY) as UtcMillis;
-const RUN_ID = 'demo-plan-b';
+const RUN_ID = 'demo-autopilot';
 const noSleep: Sleeper = { sleep: () => Promise.resolve() };
 
 /** El plan de la demostración: 24 % en BTC y 16 % en ETH, comprando cada semana y revisando cada cuatro. */
-export const DEMO_PLAN: PlanBPlan = Object.freeze({
+export const DEMO_PLAN: AutopilotPlan = Object.freeze({
   target: Object.freeze({ 'BTC/EUR': '0.24', 'ETH/EUR': '0.16' }),
   contribution: '400',
   everyMs: 7 * DAY,
@@ -36,13 +36,13 @@ export const DEMO_PLAN: PlanBPlan = Object.freeze({
   stopFraction: '0.35',
 });
 
-export interface PlanBRun {
+export interface AutopilotRun {
   readonly jsonl: string; // diario inversor-replay/1, como el de la demo
   readonly card: string; // ficha del dashboard, con el reparto objetivo
   readonly halted: string | null;
 }
 
-export function planBRun(plan: PlanBPlan = DEMO_PLAN): PlanBRun {
+export function autopilotRun(plan: AutopilotPlan = DEMO_PLAN): AutopilotRun {
   const candles: HistoricalCandle[] = demoCandles();
   const costs = executionCosts(DEMO_COSTS);
   const rules = DEFAULT_INSTRUMENT_RULES;
@@ -54,7 +54,7 @@ export function planBRun(plan: PlanBPlan = DEMO_PLAN): PlanBRun {
     type: 'RawMarketDataReceived', source: 'historical', sourceSeq: i, eventTime: candle.closeTime, receivedTime: candle.receivedTime, payload: Object.freeze({ ...candle }),
   }));
   let context: ReplayContext | null = null;
-  let bot: PlanBBot | null = null;
+  let bot: AutopilotBot | null = null;
   let venue: SimulatedVenue | null = null;
   let deliveredAt: UtcMillis | null = null;
   const handler: ReplayHandler = (event, ctx) => {
@@ -93,7 +93,7 @@ export function planBRun(plan: PlanBPlan = DEMO_PLAN): PlanBRun {
     quoteCurrency: 'EUR', startingCash,
     sinks: { update: (u) => bot?.onVenueUpdate(u), failure: (f) => bot?.onVenueFailure(f), snapshot: (s) => bot?.onAccountSnapshot(s) },
   });
-  bot = new PlanBBot({
+  bot = new AutopilotBot({
     clock: engine.clock, intentIds: seededIds(DEMO_SEED, 'intent'), approvalIds: seededUuids(DEMO_SEED, 'approval'), venue,
     riskStore: new MemoryRiskStore(), executionStore: new MemoryExecutionStore(), riskLimits: DEFAULT_RISK_LIMITS, quoteCurrency: 'EUR', startingCash,
     commit: 'demo', orderTtlMs: 300_000, startAt: START, plan,
@@ -108,14 +108,14 @@ export function planBRun(plan: PlanBPlan = DEMO_PLAN): PlanBRun {
   const header = canonicalJson({ format: 'inversor-replay/1', runId: RUN_ID, seed: DEMO_SEED, segment: { from: START, to: END }, journalSha256: result.sha256 });
   const footer = canonicalJson({ events: result.journal.length, clock: result.journal.at(-1)?.receivedTime ?? END });
   const jsonl = `${[header, ...result.journal.map((e) => canonicalJson(e)), footer].join('\n')}\n`;
-  // El objetivo de la ficha, por activo, con el resto en efectivo: así la tarjeta del plan B compara también la caja.
+  // El objetivo de la ficha, por activo, con el resto en efectivo: así la tarjeta del Autopilot compara también la caja.
   const objetivo: Record<string, string> = Object.fromEntries(Object.entries(plan.target).map(([symbol, weight]) => [symbol.split('/')[0] ?? symbol, weight]));
   const invested = Object.values(plan.target).reduce((sum, w) => sum.plus(Decimal.parse(w)), Decimal.parse('0'));
   objetivo['EUR'] = Decimal.parse('1').minus(invested).toString();
   const card = JSON.stringify({
-    etiqueta: 'Demostración con datos sintéticos: bot de plan B, compras periódicas y rebalanceo en paper. El reparto es un ejemplo, no una recomendación',
+    etiqueta: 'Demostración con datos sintéticos: Autopilot, DCA pasivo y rebalanceo en paper. El reparto es un ejemplo, no una recomendación',
     datos: 'sinteticos',
-    estrategia: { id: PLAN_B_ID, version: PLAN_B_VERSION, parametros: { aportacion: Number(plan.contribution), diasEntreCompras: plan.everyMs / DAY, diasEntreRevisiones: plan.rebalanceEveryMs / DAY, banda: Number(plan.band), stop: Number(plan.stopFraction) } },
+    estrategia: { id: AUTOPILOT_ID, version: AUTOPILOT_VERSION, parametros: { aportacion: Number(plan.contribution), diasEntreCompras: plan.everyMs / DAY, diasEntreRevisiones: plan.rebalanceEveryMs / DAY, banda: Number(plan.band), stop: Number(plan.stopFraction) } },
     temporalidad: '1d',
     costes: DEMO_COSTS,
     referencia: 'BTC/EUR',

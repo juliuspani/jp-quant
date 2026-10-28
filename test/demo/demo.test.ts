@@ -1,5 +1,5 @@
 // Comando de la demo pública (paso 49, ADR 0048): páginas deterministas en inglés y en español, el registro real del
-// estudio en Investigación y Criterios, el plan B rellenado con su bot, servidor local de solo lectura y versión estática
+// estudio en Investigación y Criterios, el Autopilot rellenado con su bot, servidor local de solo lectura y versión estática
 // para GitHub Pages.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -9,7 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { DEMO_HOST, DEMO_PATHS, demoPage, demoPages, demoServer, planBPage } from '../../demo/demo.ts';
+import { DEMO_HOST, DEMO_PATHS, demoPage, demoPages, demoServer, autopilotPage } from '../../demo/demo.ts';
 import { DASHBOARD_CSP } from '../../src/monitoring/dashboard-html.ts';
 import { PAGE_SCRIPT } from '../../src/monitoring/page-script.ts';
 import { ROOT } from '../invariants/repo.ts';
@@ -45,10 +45,22 @@ test('Investigación y Criterios usan el registro real: 0 estrategias candidatas
   assert.ok(en.includes('tendencia-donchian-atr'), 'con las familias reales');
 });
 
-test('la tarjeta del plan B sale del replay del bot de plan B y enlaza a su página', () => {
-  assert.ok(en.includes('From the plan B bot replay on synthetic data') && en.includes('href="plan-b/"'));
-  assert.ok(es.includes('Del replay del bot de plan B con datos sintéticos') && es.includes('href="../plan-b/es/"'));
-  assert.ok(planBPage('en').includes('Current allocation against the target'));
+test('el abanico «¿suerte o ventaja?» se ve, etiquetado como ilustración sintética y con las cifras reales del control', () => {
+  for (const [html, label, real] of [
+    [en, 'Illustration with the demo&#39;s synthetic replay', 'EXP-0027: percentile 99.9 of 1000 random placements'],
+    [es, 'Ilustración con el replay sintético de la demo', 'EXP-0027: percentil 99,9 de 1000 colocaciones al azar'],
+  ] as const) {
+    const card = /<section class="card wide reveal luck">[\s\S]*?<\/section>/.exec(html)?.[0] ?? '';
+    assert.ok(card.includes(label), 'dice que es una ilustración');
+    assert.ok(card.includes(real), 'con las cifras reales agregadas');
+    assert.match(card, /<polyline class="ctl draw"/, 'con las curvas del control');
+  }
+});
+
+test('la tarjeta del Autopilot sale del replay del Autopilot y enlaza a su página', () => {
+  assert.ok(en.includes('From the Autopilot replay on synthetic data') && en.includes('href="autopilot/"'));
+  assert.ok(es.includes('Del replay del Autopilot con datos sintéticos') && es.includes('href="../autopilot/es/"'));
+  assert.ok(autopilotPage('en').includes('Current allocation against the target'));
 });
 
 test('el servidor solo da las páginas de la demo, en 127.0.0.1, con la CSP también en la cabecera', async () => {

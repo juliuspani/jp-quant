@@ -11,7 +11,9 @@ aquí solo están las reglas permanentes y dónde encontrar lo demás.
 ## 1. Qué es el proyecto
 
 JP Quant: plataforma de investigación cuantitativa de criptomonedas para una sola persona, con un dashboard local y su
-publicación. Se llamaba «Inversor JP»; desde el paso 49 el repositorio público y el paquete se llaman `jp-quant` (ADR 0048).
+publicación. Se llamaba «Inversor JP»; desde el paso 49 el paquete y el repositorio público se llaman `jp-quant` (ADR 0048).
+El repositorio privado del proyecto es la fuente de verdad: la copia pública `jp-quant` solo se actualiza exportando
+(`docs/EXPORT_PUBLIC.md`).
 La publicación es solo la demo con datos sintéticos del repo público del paso 49 (GIF y comando de demo): un diario con
 datos reales nunca se publica y se queda en local.
 No hay ningún bot operando 24/7: el paso 31 (2026-10-22) no aprobó ninguna estrategia, se paró el desarrollo de trading
@@ -127,6 +129,9 @@ Si hay cambios sin confirmar que no aparecen en `PROGRESS.md`, detenerse y avisa
 | Skills con el detalle operativo | `.claude/skills/` |
 | Periodo del test final | `config/holdout.lock` (etapas en el ADR 0019) |
 | Código y pruebas | `src/`, `test/` |
+| Demo pública (sintética) y Autopilot (DCA pasivo y rebalanceo, antes «plan B») en paper (paso 49) | `demo/` |
+| Prueba de estrategias de usuarios (sandbox, paso 49) | `sandbox/`, `examples/` |
+| Exportación de la copia pública `jp-quant` (paso 49) | `docs/EXPORT_PUBLIC.md`, `scripts/export-public.ts` |
 
 Lo marcado como pendiente aún no existe; se crea en su paso correspondiente, no antes.
 

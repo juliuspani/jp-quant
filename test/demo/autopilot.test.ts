@@ -1,10 +1,10 @@
-// Bot de plan B (paso 49, ADR 0048): determinista, toda orden pasa por Risk, Risk lo frena con sus límites, el stop de
+// Autopilot, antes «Autopilot» (paso 49, ADR 0048): determinista, toda orden pasa por Risk, Risk lo frena con sus límites, el stop de
 // protección cubre siempre la posición y solo se cancela con el sustituto aprobado, y el dashboard lo lee como cualquier
 // diario.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEMO_PLAN, planBRun } from '../../demo/dca/run.ts';
-import { planBPage } from '../../demo/demo.ts';
+import { DEMO_PLAN, autopilotRun } from '../../demo/autopilot/run.ts';
+import { autopilotPage } from '../../demo/demo.ts';
 import { contextFromCard } from '../../src/app/dashboard-command.ts';
 import { buildDashboard } from '../../src/monitoring/dashboard.ts';
 import { parseJournal } from '../../src/monitoring/journal.ts';
@@ -14,12 +14,12 @@ interface Event {
   readonly payload: Record<string, unknown>;
 }
 
-const run = planBRun();
+const run = autopilotRun();
 const events: Event[] = run.jsonl.trim().split('\n').slice(1, -1).map((line) => JSON.parse(line) as Event);
 const of = (type: string): Record<string, unknown>[] => events.filter((e) => e.type === type).map((e) => e.payload);
 
 test('el mismo plan da exactamente el mismo diario y el bot no se detiene', () => {
-  assert.equal(planBRun().jsonl, run.jsonl);
+  assert.equal(autopilotRun().jsonl, run.jsonl);
   assert.equal(run.halted, null);
 });
 
@@ -72,15 +72,15 @@ test('al final, cada posición tiene su stop y el reparto queda cerca del objeti
   assert.ok(snapshot.attention.every((a) => !a.message.includes('sin stop')));
 });
 
-test('la página del plan B es la del dashboard, con su ficha y la reproducción', () => {
-  const html = planBPage('es');
-  assert.equal(planBPage('es'), html);
-  assert.ok(html.includes('bot de plan B') && html.includes('Replay en marcha'));
-  assert.ok(planBPage('en').includes('plan B bot') && planBPage('en').includes('Replay in motion'));
+test('la página del Autopilot es la del dashboard, con su ficha y la reproducción', () => {
+  const html = autopilotPage('es');
+  assert.equal(autopilotPage('es'), html);
+  assert.ok(html.includes('Autopilot') && html.includes('Replay en marcha'));
+  assert.ok(autopilotPage('en').includes('Autopilot') && autopilotPage('en').includes('Replay in motion'));
 });
 
 test('un plan inválido no construye el bot', () => {
-  assert.throws(() => planBRun({ ...DEMO_PLAN, target: { 'BTC/EUR': '0.7', 'ETH/EUR': '0.4' } }), RangeError);
-  assert.throws(() => planBRun({ ...DEMO_PLAN, stopFraction: '1' }), RangeError);
-  assert.throws(() => planBRun({ ...DEMO_PLAN, everyMs: 0 }), RangeError);
+  assert.throws(() => autopilotRun({ ...DEMO_PLAN, target: { 'BTC/EUR': '0.7', 'ETH/EUR': '0.4' } }), RangeError);
+  assert.throws(() => autopilotRun({ ...DEMO_PLAN, stopFraction: '1' }), RangeError);
+  assert.throws(() => autopilotRun({ ...DEMO_PLAN, everyMs: 0 }), RangeError);
 });

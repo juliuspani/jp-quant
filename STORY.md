@@ -56,9 +56,16 @@ tests.
   identical journals in all ten folds, with the same verdict. Only the family's test count changed (153 to 183), because
   re-running a test counts as another test, so its Deflated Sharpe dropped from 0.48 to 0.44.
 
-On 2026-10-22 I stopped active trading development. The plan B was a passive approach, documented but not recommended:
-buy-and-hold or regular purchases (DCA). This repository includes a paper-only DCA and rebalancing bot as an example of
-the execution system. It is not a recommendation.
+On 2026-10-22 I stopped active trading development. What came next was a passive approach (first called "plan B",
+now the **Autopilot**), documented but not recommended: regular purchases (DCA) and rebalancing. It runs in paper only,
+as an example of the execution system. It does not try to beat the market.
+
+## Turning it into a tool
+
+The checks that stopped me from fooling myself turned out to be the most useful part. So v1.1 lets anyone run them on
+their own strategy with one command (`npm run test-strategy`). It uses the same walk-forward, costs, Deflated Sharpe,
+PBO and random control, and it gives a verdict in plain words. Those runs go to a local registry of their own: they never
+touch the project's official research or its count of tests.
 
 ## What I learned
 

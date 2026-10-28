@@ -26,7 +26,7 @@ export function t(es: string, en: string): string {
   return current === 'en' ? en : es;
 }
 
-// Motivos que las estrategias de referencia y el bot de plan B escriben en el diario, en español. El diario no cambia: en
+// Motivos que las estrategias de referencia y el Autopilot (antes «bot de plan B») escriben en el diario, en español. El diario no cambia: en
 // la página inglesa se muestran traducidos los conocidos y el resto tal cual.
 const PHRASES: ReadonlyMap<string, string> = new Map([
   ['cierre sobre la EMA', 'close above the EMA'], ['cierre bajo la EMA', 'close below the EMA'], ['sin features', 'no features'],
@@ -35,8 +35,19 @@ const PHRASES: ReadonlyMap<string, string> = new Map([
   ['salida sin posición: se ignora', 'exit without a position: ignored'], ['fuera del plan', 'outside the plan'],
   ['orden anterior sin resolver', 'previous order unresolved'], ['compra periódica (DCA)', 'periodic purchase (DCA)'], ['objetivo alcanzado', 'target reached'],
   ['por debajo del importe mínimo', 'below the minimum amount'], ['rebalanceo: vender el exceso', 'rebalance: sell the excess'],
-  ['stop de protección del plan', 'plan protective stop'], ['stop de protección: la posición cambió', 'protective stop: the position changed'],
+  ['stop de protección del plan', 'Autopilot protective stop'], ['stop de protección: la posición cambió', 'protective stop: the position changed'],
 ]);
+
+// Nombres legibles de las familias del registro en la página inglesa. El id (en español) no cambia y sigue en el registro;
+// en la página española se muestra el id tal cual.
+const FAMILIES_EN: ReadonlyMap<string, string> = new Map([
+  ['tendencia-donchian-atr', 'Donchian trend (ATR)'], ['reversion-rsi2', 'RSI(2) mean reversion'], ['regimen-btc-sma200', 'BTC regime (SMA 200)'],
+  ['ruptura-volatilidad-intradia', 'Intraday volatility breakout'], ['dca-btc', 'BTC DCA'], ['vistazos-descriptivos', 'Descriptive checks'],
+]);
+
+export function familyName(id: string): string {
+  return current === 'en' ? FAMILIES_EN.get(id) ?? id : id;
+}
 
 export function phrase(text: string): string {
   if (current !== 'en') return text;

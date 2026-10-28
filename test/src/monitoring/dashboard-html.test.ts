@@ -86,7 +86,7 @@ test('cuatro vistas con su menú; sin JavaScript cambian con :target y sin :targ
   assert.deepEqual([...html.matchAll(/<section class="view" id="([a-z]+)">/g)].map((m) => m[1]), ['resumen', 'investigacion', 'replay', 'criterios']);
   assert.ok(html.includes('<nav class="nav" aria-label="Vistas"><a href="#resumen">Resumen</a><a href="#investigacion">Investigación</a><a href="#replay">Replay</a><a href="#criterios">Criterios</a></nav>'));
   assert.ok(css.includes('body:has(.view:target) .view:not(:target),body:not(:has(.view:target)) .view:not(#resumen){display:none}'));
-  for (const heading of ['Salud del sistema', 'Capital', 'Posiciones', 'Órdenes abiertas', 'Operaciones', 'Órdenes frenadas por el control de riesgo', 'Estrategias', 'Alertas recientes', 'Plan B']) {
+  for (const heading of ['Salud del sistema', 'Capital', 'Posiciones', 'Órdenes abiertas', 'Operaciones', 'Órdenes frenadas por el control de riesgo', 'Estrategias', 'Alertas recientes', 'Autopilot']) {
     assert.match(section('replay'), new RegExp(`<h2>${escapeHtml(heading)}(<span class="tech">[^<]+</span>)?</h2><p class="lede">[^<]+</p>`), heading);
   }
   for (const heading of ['Evolución frente a comprar y mantener BTC', 'Investigación']) assert.match(section('resumen'), new RegExp(`<h2>${heading}`), heading);
@@ -216,12 +216,12 @@ test('experimentos: con JavaScript, los 10 más recientes y «Ver todos»; sin J
   assert.ok(PAGE_SCRIPT.includes("list.classList.add('clip')") && PAGE_SCRIPT.includes('button.hidden = false'));
 });
 
-test('cifras pegadas a su unidad con espacio no separable; «en curso» en gris claro; Plan B vacío en una línea', () => {
+test('cifras pegadas a su unidad con espacio no separable; «en curso» en gris claro; Autopilot vacío en una línea', () => {
   const resumen = section('resumen');
   assert.ok(resumen.includes('10.141,04 <i>EUR</i>'));
   assert.ok(resumen.includes('1,41 %'));
   assert.doesNotMatch(withoutScript(html).replace(/<style>[\s\S]*?<\/style>/, ''), /\d %|\d <i>/, 'ninguna cifra separada de su unidad');
-  assert.match(section('replay'), /<section class="card wide"><h2>Plan B<\/h2><p class="lede">Este diario no tiene reparto objetivo: [^<]+<\/p><\/section>/);
+  assert.match(section('replay'), /<section class="card wide"><h2>Autopilot<span class="tech">DCA pasivo y rebalanceo<\/span><\/h2><p class="lede">Este diario no tiene reparto objetivo: [^<]+<\/p><\/section>/);
 });
 
 test('resumen arriba: una frase con los datos, cuatro cifras y el estado con texto', () => {

@@ -7,8 +7,8 @@
 // 3. Embudo de criterios: cuántos experimentos superan cada criterio congelado, en orden, y qué criterio tumbó a cuántos.
 import { extent, niceStep, points, yGrid, type Frame } from './charts-html.ts';
 import { compactLines, day, e, float, head, table, when } from './html-kit.ts';
-import { t } from './i18n.ts';
-import type { Outcome, ResearchSnapshot } from './research.ts';
+import { familyName, t } from './i18n.ts';
+import type { LuckCurves, Outcome, ResearchSnapshot } from './research.ts';
 
 const OUTCOME_SLUG: ReadonlyMap<Outcome, string> = new Map([
   ['aceptado', 'acc'], ['rechazado', 'rej'], ['no concluyente', 'inc'], ['abortado', 'abo'], ['en curso', 'run'],
@@ -99,7 +99,7 @@ function sphereSvg(f: SphereFrame, r: ResearchSnapshot): string {
     const [x, y, z] = project(unit, f.cx, f.cy, f.radius);
     const depth = (z + 1) / 2;
     const size = (f.cls === 'sm' ? 2.2 : 2.6) + (f.cls === 'sm' ? 3 : 3.8) * Math.sqrt(p.trials / maxTrials);
-    const info = `${p.id} · ${p.family} · ${day(p.date)} · ${outcomeLabel(p.outcome)} · ${String(p.trials)} ${p.trials === 1 ? t('prueba', 'test') : t('pruebas', 'tests')}`;
+    const info = `${p.id} · ${familyName(p.family)} · ${day(p.date)} · ${outcomeLabel(p.outcome)} · ${String(p.trials)} ${p.trials === 1 ? t('prueba', 'test') : t('pruebas', 'tests')}`;
     return `<circle class="pt o-${slug(p.outcome)}" tabindex="0" data-p="${unit.map(r3).join(',')}" data-s="${size.toFixed(2)}" data-info="${e(info)}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(size * (0.7 + 0.3 * depth)).toFixed(2)}" opacity="${(0.3 + 0.7 * depth).toFixed(2)}"><title>${e(info)}</title></circle>`;
   }).join('');
   const flows = f.cls === 'lg' ? flowsSvg(f, r) : '';
@@ -108,20 +108,34 @@ ${flows}<g class="wires">${wires}</g><g class="pts">${dots}</g>
 </svg>`;
 }
 
+/** Separación mínima entre los centros de dos etiquetas de una columna: cada una ocupa dos líneas (nombre y recuento). */
+export const LABEL_STEP = 32;
+
+/**
+ * Centros de una columna de etiquetas: cada elemento ocupa una franja proporcional a su recuento, pero nunca menos de
+ * LABEL_STEP entre centros, para que los nombres no se monten (familias pequeñas juntas, como dca-btc y regimen-btc-sma200).
+ */
+export function stackLabels(counts: readonly number[], total: number, top: number, height: number): number[] {
+  const gap = 14;
+  const usable = Math.max(0, height - gap * Math.max(0, counts.length - 1));
+  const ys: number[] = [];
+  let y = top;
+  for (const count of counts) {
+    const h = Math.max(6, (count / Math.max(1, total)) * usable);
+    const center = Math.max(y + h / 2, (ys.at(-1) ?? -Infinity) + LABEL_STEP);
+    ys.push(center);
+    y = center + h / 2 + gap;
+  }
+  return ys;
+}
+
 /** Flujos finos: a la izquierda entran las familias; a la derecha salen los totales por desenlace. */
 function flowsSvg(f: SphereFrame, r: ResearchSnapshot): string {
   const total = Math.max(1, r.points.length);
   const out: string[] = [];
   const column = (items: readonly { readonly key: string; readonly count: number }[], top: number, height: number): { readonly key: string; readonly count: number; readonly y: number }[] => {
-    const gap = 14;
-    const usable = height - gap * Math.max(0, items.length - 1);
-    let y = top;
-    return items.map((item) => {
-      const h = Math.max(6, (item.count / total) * usable);
-      const placed = { ...item, y: y + h / 2 };
-      y += h + gap;
-      return placed;
-    });
+    const ys = stackLabels(items.map((item) => item.count), total, top, height);
+    return items.map((item, i) => ({ ...item, y: ys[i] ?? top }));
   };
   const width = (count: number): number => 0.8 + 4.5 * (count / total);
   const curve = (x0: number, y0: number, x1: number, y1: number): string => `M${x0.toFixed(1)} ${y0.toFixed(1)}C${(x0 + 110).toFixed(1)} ${y0.toFixed(1)} ${(x1 - 110).toFixed(1)} ${y1.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`;
@@ -132,7 +146,7 @@ function flowsSvg(f: SphereFrame, r: ResearchSnapshot): string {
     const d = curve(232, node.y, f.cx - f.radius * 0.94, target);
     out.push(`<path class="flow" d="${d}" stroke-width="${width(node.count).toFixed(2)}"/><path class="flow-dash" d="${d}"/>`);
     out.push(`<line class="node" x1="230" x2="230" y1="${(node.y - 7).toFixed(1)}" y2="${(node.y + 7).toFixed(1)}"/>`);
-    out.push(`<text class="flow-label" x="0" y="${(node.y - 2).toFixed(1)}">${e(node.key)}</text>`);
+    out.push(`<text class="flow-label" x="0" y="${(node.y - 2).toFixed(1)}">${e(familyName(node.key))}</text>`);
     out.push(`<text class="tk" x="0" y="${(node.y + 13).toFixed(1)}">${e(`${String(node.count)} exp. · ${String(fam?.trials ?? 0)} ${t('pruebas', 'tests')}`)}</text>`);
   });
   const present = r.outcomes.filter((o) => o.count > 0);
@@ -151,7 +165,7 @@ function flowsSvg(f: SphereFrame, r: ResearchSnapshot): string {
 
 export function sphereCard(r: ResearchSnapshot): string {
   const legend = r.outcomes.map((o) => `<li>${outcomeTag(o.outcome, ` · ${String(o.count)}`)}</li>`).join('');
-  const families = r.families.map((fam) => `<li><span>${e(fam.family)}</span><span class="num">${e(`${String(fam.experiments)} exp. · ${String(fam.trials)} ${t('pruebas', 'tests')}`)}</span></li>`).join('');
+  const families = r.families.map((fam) => `<li><span>${e(familyName(fam.family))}</span><span class="num">${e(`${String(fam.experiments)} exp. · ${String(fam.trials)} ${t('pruebas', 'tests')}`)}</span></li>`).join('');
   return `<section class="card wide">${head(t('Núcleo del registro', 'Registry core'), t('Cada punto es un experimento del registro, con el color de su desenlace y el tamaño según sus pruebas. Entran por familia y salen por desenlace.', 'Each dot is an experiment in the registry, coloured by its outcome and sized by its tests. They come in by family and leave by outcome.'), 'Experiment Registry')}
 <ul class="legend-list">${legend}</ul>
 <div class="chart">${SPHERE_FRAMES.map((f) => sphereSvg(f, r)).join('')}</div>
@@ -197,11 +211,44 @@ ${label}
 /** Pestañas como máximo: los experimentos más recientes con curvas. La hoja de estilos tiene una regla por pestaña. */
 export const MAX_LUCK_TABS = 12;
 
+/** El control aleatorio de un experimento real, en cifras agregadas de su salida (A.3.12): sin series ni operaciones. */
+export interface RealControl {
+  readonly id: string;
+  readonly percentile: number; // de 0 a 100
+  readonly simulations: number;
+  readonly sharpe: number;
+  readonly p95: number; // Sharpe del percentil 95 del control
+}
+
+/**
+ * Ilustración del abanico con el replay sintético de la demo (paso 49): cuando el registro no guardó curvas del control,
+ * enseña cómo se lee con datos inventados y, debajo, las cifras reales agregadas del control de los experimentos.
+ */
+export interface LuckIllustration {
+  readonly luck: LuckCurves;
+  readonly real: readonly RealControl[];
+}
+
+function illustrationCard(ill: LuckIllustration): string {
+  const luck = ill.luck;
+  const real = ill.real.map((c) => `<li>${e(t(
+    `${c.id}: percentil ${float(c.percentile, 1)} de ${String(c.simulations)} colocaciones al azar con sus mismas operaciones (Sharpe ${float(c.sharpe, 2)}; el percentil 95 del control, ${float(c.p95, 2)}).`,
+    `${c.id}: percentile ${float(c.percentile, 1)} of ${String(c.simulations)} random placements with its same trades (Sharpe ${float(c.sharpe, 2)}; the control's 95th percentile, ${float(c.p95, 2)}).`,
+  ))}</li>`).join('');
+  return `<section class="card wide reveal luck">${head(t('¿Suerte o ventaja?', 'Luck or edge?'), t('La estrategia (en color) frente a colocaciones al azar con las mismas operaciones, duración y costes. Cada línea gris es una; la banda va del percentil 5 al 95.', 'The strategy (in colour) against random placements with the same trades, durations and costs. Each grey line is one; the band runs from the 5th to the 95th percentile.'), t('control aleatorio', 'random control'))}
+<p class="status illustration">${e(t('Ilustración con el replay sintético de la demo (BASELINE sobre precios inventados): no es un resultado de investigación. El registro real no guardó las curvas de su control, solo sus cifras.', 'Illustration with the demo\'s synthetic replay (BASELINE on invented prices): not a research result. The real registry did not save the curves of its control, only its figures.'))}</p>
+<div class="chart">${FAN_FRAMES.map((f) => fanSvg(f, luck)).join('')}</div>
+<p class="explain">${e(`${t('Percentil de la ilustración', 'Percentile of the illustration')}: ${float(luck.percentile, 1)}.`)}</p>
+${real === '' ? '' : `<h3>${t('En el estudio real', 'In the real study')}</h3>\n<ul class="real-controls">${real}</ul>\n<p class="note">${e(t('Superar el control aleatorio no basta: ninguna estrategia superó todos los criterios congelados.', 'Beating the random control is not enough: no strategy passed every frozen criterion.'))}</p>`}
+</section>`;
+}
+
 /**
  * Un solo gráfico con pestañas para elegir el experimento, el más reciente primero. Las pestañas son radios con CSS: sin
  * JavaScript funcionan, y si el navegador no entiende :has, se ve el primero.
  */
-export function luckCards(r: ResearchSnapshot): string {
+export function luckCards(r: ResearchSnapshot, illustration?: LuckIllustration): string {
+  if (r.luck.length === 0 && illustration !== undefined) return illustrationCard(illustration);
   if (r.luck.length === 0) {
     return `<section class="card wide">${head(t('¿Suerte o ventaja?', 'Luck or edge?'), t('La estrategia frente a colocaciones al azar con las mismas operaciones, duración y costes.', 'The strategy against random placements with the same trades, durations and costs.'), t('control aleatorio', 'random control'))}
 <p class="note">${e(t('Ningún experimento de este registro guardó las curvas de su control aleatorio: los anteriores al paso 41C solo conservan el percentil, y si el simulador no representa el control (A.3.12 usa el backtester), tampoco se guardan. El dashboard no relanza backtests.', 'No experiment in this registry saved the curves of its random control: those before step 41C keep only the percentile, and they are not saved either when the simulator does not represent the control (A.3.12 uses the backtester). The dashboard does not re-run backtests.'))}</p></section>`;
@@ -215,7 +262,7 @@ export function luckCards(r: ResearchSnapshot): string {
       ? t('Por encima del percentil 95 del control: difícil de explicar solo con suerte.', 'Above the 95th percentile of the control: hard to explain by luck alone.')
       : t('Dentro del abanico del control: no se distingue de la suerte.', 'Inside the control fan: indistinguishable from luck.');
     return `<div class="lk-panel" data-exp="${e(luck.experimentId)}">
-<p class="meta-line">${e(point === undefined ? luck.experimentId : `${luck.experimentId} · ${point.family} · ${day(point.date)} · ${outcomeLabel(point.outcome)} · ${String(luck.simulations)} ${t('colocaciones', 'placements')}`)}</p>
+<p class="meta-line">${e(point === undefined ? luck.experimentId : `${luck.experimentId} · ${familyName(point.family)} · ${day(point.date)} · ${outcomeLabel(point.outcome)} · ${String(luck.simulations)} ${t('colocaciones', 'placements')}`)}</p>
 <div class="chart">${FAN_FRAMES.map((f) => fanSvg(f, luck)).join('')}</div>
 <p class="explain">${e(`${t('Percentil', 'Percentile')} ${float(luck.percentile, 1)}. ${verdict}`)}</p></div>`;
   }).join('\n');
@@ -232,14 +279,14 @@ export const RECENT_EXPERIMENTS = 10;
 /** Todos los experimentos; con JavaScript, solo los 10 más recientes y un botón que despliega el resto. */
 export function experimentsCard(r: ResearchSnapshot): string {
   const rows = [...r.points].reverse().map((p) => [
-    `<span class="mono">${e(p.id)}</span>`, e(p.family), when(p.date), String(p.trials), outcomeTag(p.outcome),
+    `<span class="mono">${e(p.id)}</span>`, e(familyName(p.family)), when(p.date), String(p.trials), outcomeTag(p.outcome),
   ]);
   const extra = rows.length - RECENT_EXPERIMENTS;
   const button = extra > 0 ? `<button type="button" class="more" hidden data-all="${e(`${t('Ver todos', 'See all')} (${String(rows.length)})`)}" data-few="${e(t(`Ver solo los ${String(RECENT_EXPERIMENTS)} más recientes`, `See only the ${String(RECENT_EXPERIMENTS)} most recent`))}">${e(`${t('Ver todos', 'See all')} (${String(rows.length)})`)}</button>` : '';
   return `<section class="card wide">${head(t('Experimentos', 'Experiments'), t('Los del registro, los más recientes primero. Las pruebas de cada uno cuentan en la N global, también las abortadas o invalidadas.', 'Those in the registry, most recent first. Each one\'s tests count towards the global N, including aborted or invalidated ones.'))}
 <div class="only-lg"><div class="exp-list">${table([{ label: 'Id', key: true }, { label: t('Familia', 'Family') }, { label: t('Fecha', 'Date'), key: true }, { label: t('Pruebas', 'Tests'), num: true, tech: 'n_pruebas' }, { label: t('Desenlace', 'Outcome'), key: true }], rows, t('El registro está vacío.', 'The registry is empty.'))}</div>
 ${button}</div>
-${compactLines([...r.points].reverse().map((p) => [`<span class="mono">${e(p.id)}</span>`, e(p.family), outcomeTag(p.outcome)]), t('El registro está vacío.', 'The registry is empty.'), t('Ver todos', 'See all'))}</section>`;
+${compactLines([...r.points].reverse().map((p) => [`<span class="mono">${e(p.id)}</span>`, e(familyName(p.family)), outcomeTag(p.outcome)]), t('El registro está vacío.', 'The registry is empty.'), t('Ver todos', 'See all'))}</section>`;
 }
 
 // ---- 3. Embudo de criterios ----

@@ -1,9 +1,11 @@
 // Graba el GIF del README y la imagen de vista previa para redes desde la demo sintética (paso 49, ADR 0048). Nunca desde
-// un dashboard con datos reales: sirve la misma página que `npm run demo`, en 127.0.0.1 y en un puerto libre.
+// un dashboard con datos reales: sirve las mismas páginas que `npm run demo`, en 127.0.0.1 y en un puerto libre.
 // - Abre un Chrome o Edge sin ventana (--navegador) y lo maneja por el DevTools Protocol con el WebSocket de Node: sin
 //   dependencias. El perfil del navegador es una carpeta temporal que se borra al terminar.
-// - Captura fotogramas mientras la tarjeta «Replay en marcha» recorre la curva y los une con ffmpeg (tiene que estar en el
-//   PATH) en un GIF de paleta reducida. Falla si el GIF pasa de 5 MB.
+// - Fluido sin tocar el script de la página (su hash está en la CSP): graba en tiempo real con el screencast del
+//   navegador, que entrega los fotogramas del compositor con su marca de tiempo, y después ffmpeg acelera el tiempo
+//   (SPEEDUP) y lo remuestrea a FPS fijos, con una paleta por GIF. Así la reproducción de 16 s queda en unos 11 s.
+// - Falla si el GIF pasa de 5 MB. ffmpeg tiene que estar en el PATH.
 // No forma parte de check:all: es una herramienta manual, que necesita un navegador y ffmpeg.
 //
 // Uso: node scripts/record-demo.ts --navegador <ruta a chrome o msedge> [--salida docs/assets]
@@ -17,8 +19,10 @@ import { DEMO_HOST, demoPages, demoServer } from '../demo/demo.ts';
 
 const WIDTH = 1280;
 const HEIGHT = 720;
-const SECONDS = 19; // 16 s de recorrido y 3 s del final quieto
-const FPS = 8;
+const RECORD_SECONDS = 18; // 16 s de recorrido y 2 s del final quieto
+const SPEEDUP = 1.6; // 18 s grabados quedan en unos 11 s
+const FPS = 25;
+const GIF_WIDTH = 800;
 const MAX_GIF_BYTES = 5 * 1024 * 1024;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -36,16 +40,22 @@ async function devToolsPort(profile: string): Promise<number> {
   throw new Error('el navegador no abrió el puerto de depuración');
 }
 
+type Handler = (params: Record<string, unknown>) => void;
+
 class Cdp {
   #ws: WebSocket;
   #next = 1;
   #pending = new Map<number, { resolve: (value: Record<string, unknown>) => void; reject: (error: Error) => void }>();
+  #handlers = new Map<string, Handler>();
 
   private constructor(ws: WebSocket) {
     this.#ws = ws;
     ws.addEventListener('message', (event) => {
-      const msg = JSON.parse(String(event.data)) as { id?: number; result?: Record<string, unknown>; error?: { message: string } };
-      if (msg.id === undefined) return;
+      const msg = JSON.parse(String(event.data)) as { id?: number; method?: string; params?: Record<string, unknown>; result?: Record<string, unknown>; error?: { message: string } };
+      if (msg.id === undefined) {
+        if (msg.method !== undefined) this.#handlers.get(msg.method)?.(msg.params ?? {});
+        return;
+      }
       const waiter = this.#pending.get(msg.id);
       if (waiter === undefined) return;
       this.#pending.delete(msg.id);
@@ -63,6 +73,10 @@ class Cdp {
     return new Cdp(ws);
   }
 
+  on(method: string, handler: Handler): void {
+    this.#handlers.set(method, handler);
+  }
+
   send(method: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     const id = this.#next++;
     this.#ws.send(JSON.stringify({ id, method, params }));
@@ -78,6 +92,30 @@ async function screenshot(cdp: Cdp, path: string): Promise<void> {
   const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
   if (typeof data !== 'string') throw new Error('captura vacía');
   writeFileSync(path, Buffer.from(data, 'base64'));
+}
+
+/** Graba el screencast durante `seconds` y deja los fotogramas con una lista de duraciones para ffmpeg. */
+async function screencast(cdp: Cdp, frames: string, seconds: number): Promise<number> {
+  const stamps: { file: string; at: number }[] = [];
+  cdp.on('Page.screencastFrame', (params) => {
+    const data = params.data;
+    const meta = params['metadata'] as { timestamp?: number } | undefined;
+    const file = join(frames, `f${String(stamps.length).padStart(5, '0')}.jpg`);
+    if (typeof data === 'string' && typeof meta?.timestamp === 'number') {
+      writeFileSync(file, Buffer.from(data, 'base64'));
+      stamps.push({ file, at: meta.timestamp });
+    }
+    void cdp.send('Page.screencastFrameAck', { sessionId: params['sessionId'] });
+  });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: WIDTH, maxHeight: HEIGHT, everyNthFrame: 1 });
+  await delay(seconds * 1000);
+  await cdp.send('Page.stopScreencast');
+  if (stamps.length < 2) throw new Error('el screencast no dio fotogramas');
+  // Formato concat de ffmpeg: cada fotograma con lo que dura hasta el siguiente; el último, repetido.
+  const lines = stamps.flatMap((s, i) => [`file '${s.file.split('\\').join('/')}'`, `duration ${(((stamps[i + 1]?.at ?? s.at + 0.04) - s.at)).toFixed(4)}`]);
+  lines.push(`file '${(stamps.at(-1)?.file ?? '').split('\\').join('/')}'`);
+  writeFileSync(join(frames, 'list.txt'), `${lines.join('\n')}\n`);
+  return stamps.length;
 }
 
 async function main(): Promise<void> {
@@ -106,17 +144,11 @@ async function main(): Promise<void> {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
     await cdp.send('Page.navigate', { url });
     await delay(1500);
-    // La tarjeta arriba, bajo la barra superior, para que se vean la curva y la lista de eventos.
+    // El resumen y la tarjeta «Replay en marcha» arriba: la curva y la lista de eventos a la vista. Al volver a cargar, la
+    // reproducción empieza desde el principio justo cuando se graba.
     await cdp.send('Runtime.evaluate', { expression: "window.scrollTo(0, document.querySelector('section.playback').getBoundingClientRect().top + window.scrollY - 70)" });
-    const start = performance.now();
-    let n = 0;
-    while (performance.now() - start < SECONDS * 1000) {
-      const due = start + (n * 1000) / FPS;
-      if (performance.now() < due) await delay(due - performance.now());
-      await screenshot(cdp, join(frames, `f${String(n).padStart(4, '0')}.png`));
-      n += 1;
-    }
-    const fps = n / ((performance.now() - start) / 1000);
+    await delay(300);
+    const count = await screencast(cdp, frames, RECORD_SECONDS);
     // Vista previa para redes: 1280×640, al final del recorrido.
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: 640, deviceScaleFactor: 1, mobile: false });
     await delay(500);
@@ -124,14 +156,14 @@ async function main(): Promise<void> {
     cdp.close();
     const gif = join(out, 'demo.gif');
     const ff = spawnSync('ffmpeg', [
-      '-y', '-loglevel', 'error', '-framerate', fps.toFixed(3), '-i', join(frames, 'f%04d.png'),
-      '-vf', 'fps=8,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle',
-      gif,
+      '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(frames, 'list.txt'),
+      '-vf', `setpts=PTS/${String(SPEEDUP)},fps=${String(FPS)},scale=${String(GIF_WIDTH)}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
+      '-loop', '0', gif,
     ], { encoding: 'utf8' });
     if (ff.status !== 0) throw new Error(`ffmpeg: ${ff.stderr || String(ff.error)}`);
     const bytes = statSync(gif).size;
     if (bytes > MAX_GIF_BYTES) throw new Error(`el GIF pesa ${String(bytes)} bytes: más de 5 MB`);
-    process.stdout.write(`record-demo: ${gif} (${(bytes / 1024 / 1024).toFixed(2)} MB, ${String(n)} fotogramas) y ${join(out, 'social-preview.png')}\n`);
+    process.stdout.write(`record-demo: ${gif} (${(bytes / 1024 / 1024).toFixed(2)} MB, ${String(count)} fotogramas grabados, ${String(FPS)} fps, ×${String(SPEEDUP)}) y ${join(out, 'social-preview.png')}\n`);
   } finally {
     browser.kill();
     server.close();

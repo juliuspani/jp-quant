@@ -1,241 +1,234 @@
 # JP Quant
 
+**A tool to check honestly whether a trading strategy has a real edge or is just luck.**
+
 ![The JP Quant console replaying a synthetic run: the equity curve advances against buy-and-hold BTC, trades appear as dots and orders stopped by the risk engine as crosses](docs/assets/demo.gif)
 
-A quantitative research platform for crypto, built by Julián Paniagua Sánchez-Brunete with AI coding agents under strict rules.
-It pre-registers every strategy, backtests it point-in-time with realistic costs, and judges it against criteria frozen in advance.
-Its research found no strategy worth trading, and this repository says so, with the evidence.
+**Live demo:** <https://juliuspani.github.io/jp-quant/>, in English, or [in Spanish](https://juliuspani.github.io/jp-quant/es/). It runs in your browser: no install, no keys, no money.
+
+It does not promise returns and it is not financial advice.
 
 [![build](https://img.shields.io/github/actions/workflow/status/juliuspani/jp-quant/ci.yml?branch=main&label=build)](https://github.com/juliuspani/jp-quant/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/juliuspani/jp-quant/ci.yml?branch=main&label=tests)](https://github.com/juliuspani/jp-quant/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Live demo:** <https://juliuspani.github.io/jp-quant/>, in English, or [in Spanish](https://juliuspani.github.io/jp-quant/es/). It is a static page: no server, no keys, no money. The replay and the plan B use synthetic data; the research and criteria views show the study's real registry.
+## Why
 
-> **Not financial advice.** This is a research and engineering project. It does not recommend any investment, and
-> nothing here promises returns. Its own research concluded that none of the strategies it tested should be traded.
+- **Most backtests lie by accident.** They peek at the future, forget costs, or keep the one setting that happened to
+  work out of hundreds tried.
+- **Luck looks like skill.** Try enough ideas and one will look great by chance. JP Quant counts every test you run and
+  makes the bar higher each time.
+- **A clear answer.** Instead of a pile of metrics you get a verdict in plain words: *looks like a real edge*,
+  *indistinguishable from luck* or *not enough data*, and why.
 
-## Run the demo
+## Test your strategy in 5 steps
 
-You need Node.js 24 or later.
+These commands work the same on Windows, macOS and Linux.
+
+**1.** Install [Node.js 24 or later](https://nodejs.org/) and [Git](https://git-scm.com/).
+
+**2.** Download the project:
 
 ```bash
-git clone https://github.com/juliuspani/jp-quant.git && cd jp-quant
+git clone https://github.com/juliuspani/jp-quant.git
+```
+
+```bash
+cd jp-quant
+```
+
+**3.** Install it (no install scripts are run):
+
+```bash
 npm ci --ignore-scripts
-npm run demo
 ```
 
-`npm run demo` runs a deterministic replay on synthetic prices through the real pipeline (Strategy → Risk → Execution
-against a simulated exchange), builds the dashboard and opens it at `http://127.0.0.1:8790/`. The server only serves the
-read-only demo pages on your machine. Use `npm run demo -- --static site` to write the same pages as static files.
-The dashboard is in English, with a switch to Spanish, the project's working language.
-
-## Plan B bot: DCA and rebalancing in paper
+**4.** Try it on the example data, which is included, with a strategy that trades at random on purpose:
 
 ```bash
-npm run demo:dca
+npm run test-strategy -- --strategy examples/coin-flip.ts --data examples/candles/synthetic-daily.csv
 ```
 
-After the research rejected both strategies, the project switched to a passive plan B. [`demo/dca/`](demo/dca/bot.ts)
-shows how to use the execution system for it, on the same synthetic prices:
+It takes a few seconds. The last line tells you where the HTML report is: open it in your browser. The verdict should
+be *indistinguishable from luck*. If a coin flip ever passed, the test itself would be broken.
 
-- a fixed amount every week, split towards a target allocation, and a check every four weeks that sells or buys back
-  when an asset drifts more than 3 points from its target;
-- every order is an intent that the risk engine sizes and signs, and you can watch it cut purchases that exceed its
-  per-trade risk limit;
-- each position keeps a protective stop on the exchange. It is only cancelled once Risk has approved the order that
-  replaces it.
+**5.** Test your own idea. Copy [`examples/my-strategy.ts`](examples/my-strategy.ts), change its rules and parameters
+(the comments explain each part) and run it on your own candles:
 
-The allocation (24 % BTC, 16 % ETH, the rest in cash) is an example, not a recommendation. The bot runs in paper only.
+```bash
+npm run test-strategy -- --strategy examples/my-strategy.ts --data my-candles.csv
+```
 
-## What is in it
+Your CSV needs the columns `time,open,high,low,close,volume`, one closed candle per row. If something is wrong, the
+error message gives the line number and what to fix. No data of your own? Download public candles from Kraken, with no
+account and no API key:
 
-| Module | What it does |
-|---|---|
-| `marketdata/`, `features/` | Closed candles only, with their receive time; features over a fixed window, with no look-ahead |
-| `strategy/` | Pure functions that return decisions. A strategy never creates or sends orders |
-| `risk/` | Sizes and approves every order, and signs each approval with Ed25519 |
-| `execution/` | Order state machine, idempotent client order IDs, `UNKNOWN` state and reconciliation |
-| `portfolio/` | Positions and cash in decimal arithmetic (`big.js`), never floating point |
-| `backtest/` | Deterministic event-driven replay, simulated venue, costs and latency |
-| `analytics/` | Performance and cost metrics, Deflated Sharpe, PBO (CSCV), block bootstrap, regimes, the frozen-criteria evaluator |
-| `research/` | Append-only experiment registry with a hash chain; every test counts towards *N* |
-| `historical/` | Parquet store, Kraken capture, data quality, point-in-time universe and the final-test lock |
-| `monitoring/` | Read-only dashboard over a replay journal and the registry; a self-contained page with a strict CSP |
-| `app/` | Composition: the trading system, backtest and research commands |
+```bash
+npm run fetch-candles -- --pair XBTEUR --interval 1d --out my-candles.csv
+```
+
+That gives the last 720 candles; they are for your own use, do not redistribute them. Your runs stay on your computer
+(`sandbox-runs/`). They never touch the project's official research registry.
+
+## What you get
+
+![A strategy test report: verdict "Indistinguishable from luck", the reasons, key numbers and the out-of-sample equity curve](docs/assets/sandbox-report.png)
+
+- **The verdict and why**, in plain words.
+- **Key numbers:** net Sharpe, Deflated Sharpe with *your* number of tests, trades, drawdown, growth and where you sit
+  against 1,000 random-trade simulations.
+- **The out-of-sample equity curve:** only periods the strategy never saw when it was chosen.
+- **The 15 frozen criteria** the project uses for its own research, with PASS, FAIL or INCONCLUSIVE.
+
+## How it works
 
 ```mermaid
 flowchart LR
-  subgraph Data
-    MD[marketdata<br/>closed candles] --> FE[features<br/>no look-ahead]
-  end
-  FE --> ST[strategy<br/>pure decisions]
-  ST -->|intent| RK[risk<br/>sizing + signed approval]
-  RK -->|approved order| EX[execution<br/>state machine]
-  EX --> VN[(venue<br/>simulated / exchange)]
-  VN -->|fills| EX
-  EX --> PF[portfolio<br/>decimal ledger]
-  PF --> ST
-  PF --> RK
-  RK -.->|rejected or reduced| J[(journal)]
-  EX -.-> J
-  J --> MO[monitoring<br/>read-only dashboard]
-  subgraph Research
-    BT[backtest<br/>deterministic replay] --> AN[analytics<br/>DSR, PBO, bootstrap]
-    AN --> RG[(experiment registry<br/>append-only)]
-  end
-  BT -. same code path .-> ST
-  RG --> MO
+  D[Your candles<br/>CSV] --> W[Walk-forward<br/>train, then test on unseen data]
+  S[Your strategy<br/>rules + parameters] --> W
+  W --> R[Risk engine<br/>sizes every trade]
+  R --> X[Simulated exchange<br/>fees, spread, slippage]
+  X --> M[Statistics<br/>Deflated Sharpe, PBO,<br/>random control]
+  M --> V{Verdict}
 ```
 
-The same code runs in every mode: the mode only picks the clock, the data source and the venue
-([ADR 0013](docs/adr/0013-mismo-codigo-en-todos-los-modos.md)). Module boundaries are enforced by `dependency-cruiser`
-and by tests ([ARCHITECTURE.md](ARCHITECTURE.md)).
+Each period, the strategy is tuned on past data only and judged on the next stretch it has not seen. Costs are always
+charged, and the strategy only ever sees closed candles. The results then face three luck tests:
+- the **Deflated Sharpe**, which raises the bar with every test you have run;
+- the **probability of overfitting (PBO)**, when you try several parameter sets;
+- **1,000 random strategies** with the same trades and costs.
 
-## Safety principles
+It is the same pipeline the project used for its own study.
 
-Each one is backed by a test or a written manual procedure in
-[SECURITY_AND_TRADING_INVARIANTS.md](SECURITY_AND_TRADING_INVARIANTS.md).
+## Results: the project's own study
 
-- **Risk cannot be bypassed.** Every order goes Strategy → Risk → Execution. Execution only accepts an approval signed by
-  the risk engine for that exact order, and an approval expires in seconds. No language model can place orders.
-- **Capital guard (capguard).** Designed as a separate process that holds the only trading key and enforces its own caps
-  ([ARCHITECTURE.md](ARCHITECTURE.md) §16.10). It is not built yet, which is one reason live trading stays blocked.
-- **Kill switch.** The risk engine trips it when it cannot persist a decision or a rejection, or when Execution reports
-  a bad signature or a reused approval, and then blocks trading for the rest of the run. Drawdown breakers and an
-  authenticated reset channel are designed but not built yet.
-- **Fail closed.** Any configuration error, missing data, stale price or unexplained order state stops trading instead
-  of guessing.
-- **No withdrawals.** There is no withdrawal code, and the startup guard refuses a key with withdrawal or margin
-  permission (reading those permissions from the exchange is still to be wired).
-- **Spot only, no leverage.** A non-spot market, leverage other than 1 or margin stop the process at startup.
-- **Paper by default.** Real money needs `APP_ENV=production`, an exact confirmation phrase typed by a person into an
-  environment variable, and exchange keys. Without all three the process refuses to start. This public repository has
-  no live configuration.
-
-**Known issue:** if an exit order fails to fill, the position stays without a protective stop until the next candle
-([#1](https://github.com/juliuspani/jp-quant/issues/1)). It only affects backtests and paper today, and it will be
-fixed in the steps that complete Execution.
-
-## Research methodology
-
-The full procedure is in [`.claude/skills/quant-research`](.claude/skills/quant-research/SKILL.md) and the frozen
-criteria in [docs/PROMOTION_CRITERIA.md](docs/PROMOTION_CRITERIA.md).
-
-- **Pre-registration.** Hypothesis, parameters, universe, costs and criteria go into the registry before any result is
-  seen. Failed, aborted and invalidated tests also count towards *N*.
-- **Point-in-time data.** Candles are used at their receive time, with a delisting-aware universe and documented
-  survivorship bias ([DATA.md](DATA.md)).
-- **Real costs.** Commission, half spread and slippage in every backtest; a backtest without costs does not start.
-- **Walk-forward** with purging and embargo, parameters chosen on train only.
-- **Locked final test.** The out-of-sample period is fixed in `config/holdout.lock`, and research code cannot load it
-  without a human-signed unlock.
-- **Deflated Sharpe Ratio** with the family *N* and the global *N*, and a long-run variance of the Sharpe ratio.
-- **Probability of Backtest Overfitting** (CSCV) over every configuration that competed in the round.
-- **Negative controls.** A random strategy with the same trades, durations and costs (1,000 simulations), a shifted
-  signal and a random walk all have to come out null.
-
-## Results
-
-Two strategies taken from the literature were tested on Kraken EUR pairs, with daily candles from 2017-01-01 to
-2026-09-30 in ten walk-forward folds.
+The project tested two classic strategies on Kraken EUR pairs, with daily candles from 2017 to 2026 in ten walk-forward
+periods.
 
 *Net Sharpe alone is misleading: read the Deflated Sharpe and the verdict. No strategy was approved.*
 
 | Verdict | Strategy | Experiment | Deflated Sharpe (family · global; needs ≥ 0.95) | Max drawdown (needs ≤ 10 %) | Trades (needs ≥ 100) | Net Sharpe (not decisive) |
 |---|---|---|---|---|---|---|
-| **REJECTED** | Donchian trend following (A) | [EXP-0027](docs/research/experiments/EXP-0027.md) | 0.48 · 0.39 | 20.5 % | 79 | 1.47 |
-| **REJECTED** | RSI(2) mean reversion (B) | [EXP-0028](docs/research/experiments/EXP-0028.md) | 0.14 · 0.07 | 1.4 % | 38 | 0.41 |
-| **REJECTED** (reproduction of A) | Donchian trend following (A) | [EXP-0030](docs/research/experiments/EXP-0030.md) | 0.44 (family *N* = 183) | 20.5 % | 79 | 1.47 |
+| **REJECTED** | Donchian trend following | [EXP-0027](docs/research/experiments/EXP-0027.md) | 0.48 · 0.39 | 20.5 % | 79 | 1.47 |
+| **REJECTED** | RSI(2) mean reversion | [EXP-0028](docs/research/experiments/EXP-0028.md) | 0.14 · 0.07 | 1.4 % | 38 | 0.41 |
+| **REJECTED** (reproduction) | Donchian trend following | [EXP-0030](docs/research/experiments/EXP-0030.md) | 0.44 (family *N* = 183) | 20.5 % | 79 | 1.47 |
 
-The bar was a Deflated Sharpe of at least 0.95, a drawdown of at most 10 %, at least 100 trades and a pass on stress,
-regime and parameter-stability tests ([docs/DECISION_POINT.md](docs/DECISION_POINT.md)).
+- **The trend strategy looked good:** it beat buy-and-hold BTC and 99.9 % of its random controls. It still failed five
+  criteria. Its edge does not survive the number of tests behind it, its drawdown doubled the cap, and it had too few
+  trades. Most of its profit came from one year (2017) and one coin (ETH).
+- **Mean reversion failed seven criteria.** Its result could not be told apart from zero.
+- **The backtest is reproducible:** re-running it (EXP-0030) gave byte-for-byte identical journals.
+- **I changed the criteria once, after seeing results** ([ADR 0030](docs/adr/0030-criterios-congelados.md), decision 9).
+  Both strategies fail under either version.
 
-- **A** beat its random control (99.9th percentile) and buy-and-hold BTC on Sharpe and Calmar. It still failed five
-  criteria. Its Sharpe does not survive the number of tests behind it, its drawdown doubles the cap, and its sample is
-  too small. It also failed in the 2020 crash and in the 2022 bear market, and most of its profit came from 2017 and ETH.
-- **B** failed seven criteria. Its Sharpe cannot be told apart from zero, and its sign flips when one parameter moves
-  by 50 %.
-- **Reproducibility.** EXP-0030 re-ran A's backtest from its specification. The journals of all ten folds came out byte
-  for byte identical to EXP-0027's, with the same verdict, criteria and PBO. Only the metrics that depend on the number
-  of tests changed (the family *N* went from 153 to 183), because re-running a test counts as another test.
-- **One caveat.** The criteria were changed once, by the person, after seeing the first round's results
-  ([ADR 0030](docs/adr/0030-criterios-congelados.md), decision 9). Both strategies are rejected under either version.
+**Conclusion:** no edge was found, and active trading development stopped. The details are in
+[docs/DECISION_POINT.md](docs/DECISION_POINT.md).
 
-**Conclusion.** Nothing here is evidence of an edge. Active trading development stopped at the decision point
-(2026-10-22). What remains is the engineering: a pipeline that makes it hard to fool yourself with a backtest.
-
-## Run the real research
-
-Market data is not included: Kraken's terms do not allow redistribution. To repeat the research, download the data
-yourself (see [DATA.md](DATA.md) §4 and §5):
+## Demo and Autopilot
 
 ```bash
-node scripts/download-kraken.ts Kraken_OHLCVT_Full_2026Q2.zip.part00
+npm run demo
 ```
+
+This opens the research console at `http://127.0.0.1:8790/`: a deterministic replay on synthetic prices through the real
+pipeline (Strategy → Risk → Execution against a simulated exchange), plus the study's real experiment registry.
 
 ```bash
-node scripts/capture-kraken.ts --zip <zip> --label full2026q2 --url <source url> --retrieved <ISO UTC time>
+npm run demo:autopilot
 ```
 
-```bash
-npm run backtest -- --spec docs/research/experiments/specs/tendencia-donchian-1.0.0-rejilla-repeticion.json
-```
+The **Autopilot** is passive DCA & rebalancing, in paper only. It buys a fixed amount every week towards a target
+allocation and rebalances when an asset drifts. It does not try to beat the market. Every order is sized and signed by
+the risk engine, and each position keeps a protective stop. The allocation in the demo is an example, not a
+recommendation.
 
-The backtest command pre-registers the experiment, runs the walk-forward and writes the criteria report next to the
-registry (`EXP-NNNN.md`, one PASS or FAIL per frozen criterion). Running it adds to *N*. To view the registry, the
-criteria funnel and a run's journal:
+## Safety
 
-```bash
-npm run dashboard -- --diario <journal.jsonl> --ficha <card.json> --salida local.html --registro docs/research/experiments/registry.jsonl
-```
+The full list, each item with a test or a written procedure, is in
+[SECURITY_AND_TRADING_INVARIANTS.md](SECURITY_AND_TRADING_INVARIANTS.md).
 
-Pages built from real data stay on your machine; this repository only publishes the synthetic demo.
+- **Risk cannot be bypassed.** Every order goes Strategy → Risk → Execution, with an approval signed by the risk engine
+  that expires in seconds. No language model can place orders.
+- **Paper by default.** Real money needs a production environment, an exact confirmation phrase typed by a person and
+  exchange keys. This public repository has no live configuration.
+- **Spot only, no leverage, no withdrawals.** A non-spot market or leverage stops the process at startup, and the startup
+  guard refuses a key with margin or withdrawal permission (reading those permissions from the exchange is still to be
+  wired).
+- **Fail closed.** Missing data, a stale price or an unexplained order state stops trading instead of guessing.
+- **Kill switch:** it trips on logging failures or a bad approval and blocks trading for the rest of the run.
+- **Still to build:** the capital guard (a separate process that would hold the trading key) and drawdown breakers.
+  This is one reason live trading stays blocked.
 
-**Expected limitation, not a bug:** two commands do not work in this public copy.
-- `npm run reproduce` checks out each experiment's recorded commit, and those commits belong to the private history.
-- `npm run pbo-ronda` needs the full experiment outputs. The published outputs are reduced so that no Kraken prices can
-  be derived from them.
+**Known issue:** an exit order that fails to fill leaves the position without a protective stop until the next candle
+([#1](https://github.com/juliuspani/jp-quant/issues/1)). It only affects backtests and paper today.
 
-The reproduction itself was checked in the private history; see EXP-0030.
+## Project story
 
-## Engineering checks
+I'm a student, and this is how it went, in short. The long version is in [STORY.md](STORY.md).
 
-```bash
-npm run check:all
-```
-
-It runs the build (`node --check` on every file; Node runs TypeScript natively), the strict typecheck, ESLint with
-custom rules (no floating point in money modules, no wall clock in deterministic modules), the module-boundary rules
-and about 760 tests. CI runs it on every push and pull request, together with a secret scan.
-
-## How it was built
-
-Step by step, with AI coding agents working under a written constitution ([CLAUDE.md](CLAUDE.md)), domain skills
-([.claude/skills](.claude/skills)), read-only review agents ([docs/CONSULTANTS.md](docs/CONSULTANTS.md)) and hooks that
-block dangerous commands. Every non-trivial decision has an ADR ([docs/adr](docs/adr)). [STORY.md](STORY.md) tells the
-story, including the negative results.
+1. **September 2026, the idea.** I wanted a small bot to trade crypto for me. I had a first version, but an audit showed
+   it was neither safe enough nor testable, so I kept it aside and started again.
+2. **Rules before strategies.** Before writing a single strategy, I wrote down what the system could never do: trade
+   without passing risk checks, use leverage, withdraw money, or peek at future data. Losing less mattered more than
+   winning.
+3. **Building with AI agents, under control.** I built it with AI coding agents. They worked inside written rules, with
+   automatic checks that block anything dangerous, read-only reviewers and a stop at every step until I approved it.
+4. **A backtester I could trust.** Next came historical data with no look-ahead, real costs and a replay that gives the
+   same result every time, plus a registry where every test is written down before it runs, failed ones included.
+5. **The first results, and a bug.** Two classic strategies were tested against criteria frozen in advance. An internal
+   audit found a bug in the first round; I fixed it and re-ran everything, and the failed runs still counted.
+6. **22 October: the honest "no".** The best strategy had a Sharpe of 1.47 and still failed: its edge did not survive the
+   number of tests behind it. I stopped building the trading side.
+7. **28 October: turning it into a tool.** The checks that stopped me from fooling myself are the useful part. So I
+   published them as a tool anyone can run on their own strategy, with a demo, the full study and this repository.
 
 ## Roadmap
 
-- **v1.0 (this release):** the research platform, the read-only console and the study, with its negative result. The
-  passive plan B bot (regular purchases and rebalancing) **already exists, in paper only**: `npm run demo:dca`.
-- **v1.1:** that passive investor running automatically with real money. It does not try to beat the market. It will
-  only be switched on after passing its own safety checks: the capital guard, the pre-live gate and the manual
-  procedures in [SECURITY_AND_TRADING_INVARIANTS.md](SECURITY_AND_TRADING_INVARIANTS.md).
+- **v1.1 (this release):** test your own strategy (`npm run test-strategy`); the research console and the study; the
+  Autopilot (passive DCA & rebalancing) **in paper only**.
+- **v1.2:** the Autopilot running automatically with real money. It does not try to beat the market, and it will only be
+  switched on after passing its own safety checks: the capital guard, the pre-live gate and the manual procedures in
+  [SECURITY_AND_TRADING_INVARIANTS.md](SECURITY_AND_TRADING_INVARIANTS.md).
 
-## Documentation
+## Contribute
 
-The documentation is in Spanish. [docs/README.md](docs/README.md) is an English guide to it.
+Try your own strategies and tell me what the tool says, or where it confused you: open an
+[issue](https://github.com/juliuspani/jp-quant/issues/new/choose). Don't attach market data: its licence does not allow
+it. To help with the code, look for issues labelled
+[good first issue](https://github.com/juliuspani/jp-quant/labels/good%20first%20issue) and read
+[CONTRIBUTING.md](CONTRIBUTING.md). Some good first ideas:
+- more example strategies;
+- an English translation of a document;
+- an extra feature for strategies, such as Bollinger bands.
 
-## Resumen en español
+## Docs
 
-JP Quant es una plataforma de investigación cuantitativa en cripto, hecha por una persona con agentes de IA bajo reglas
-estrictas. Cada estrategia se registra antes de probarla, se prueba sin mirar al futuro y con costes reales, y se juzga
-con criterios fijados de antemano. Las dos estrategias candidatas, la de tendencia y la de reversión, quedaron
-rechazadas. El backtest de la de tendencia se reprodujo byte a byte (EXP-0030 frente a EXP-0027). La demo
-(`npm run demo`) usa datos sintéticos. **No es asesoramiento financiero ni promete rentabilidad.**
+- [docs/README.md](docs/README.md) is an English guide to the documentation, which is in Spanish.
+- [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr) (architecture decisions) and [CLAUDE.md](CLAUDE.md) (the rules
+  the AI agents worked under) describe how the system is built.
+- **To repeat the study:** download Kraken's data yourself, as described in [DATA.md](DATA.md) §4, and run
+  `npm run backtest -- --spec <spec.json>` with a specification from `docs/research/experiments/specs/`.
+- **Two commands do not work in this public copy, and that is expected:**
+  - `npm run reproduce` checks out each experiment's recorded commit, and those commits are in the private history;
+  - `npm run pbo-ronda` needs the full experiment outputs, and the published ones are reduced so that no Kraken prices
+    can be derived from them.
+- **Engineering checks:** `npm run check:all` runs the build, typecheck, lint, module boundaries and about 800 tests.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE), © Julián Paniagua Sánchez-Brunete.
+
+## Resumen en español
+
+JP Quant es una herramienta para comprobar con honestidad si una estrategia de trading tiene una ventaja real o es
+suerte. Prueba tu estrategia con un solo comando
+(`npm run test-strategy -- --strategy examples/my-strategy.ts --data tus-velas.csv`). La herramienta la pasa por el
+mismo proceso que usó el estudio del proyecto: walk-forward, costes, Deflated Sharpe, PBO y 1000 controles aleatorios.
+El resultado es un informe con un veredicto en lenguaje llano: *parece ventaja real*, *no se distingue de la suerte* o
+*datos insuficientes*. Tus pruebas se quedan en tu ordenador y no tocan el registro oficial.
+
+El estudio del propio proyecto no encontró ninguna estrategia aprobada, y el backtest se reprodujo byte a byte
+(EXP-0030 frente a EXP-0027). El Autopilot (DCA pasivo y rebalanceo) funciona solo en paper; su ejecución real llegará en
+la v1.2, tras superar sus comprobaciones de seguridad.
+
+**No es asesoramiento financiero ni promete rentabilidad.**

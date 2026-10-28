@@ -5,6 +5,41 @@ repository starts at v1.0.0 with a fresh history.
 
 **Last closed step:** 31 (the decision point of the first research stretch; the plan B steps 41B, 41C and 49 followed).
 
+"Plan B" is the old name of the **Autopilot** (passive DCA & rebalancing); entries before 1.1.0 keep it.
+
+## [1.1.0] — 2026-10-28
+
+What you can do now: test your own strategy, honestly, with one command.
+
+### Added
+
+- **`npm run test-strategy`:** your strategy and your candles go through the same pipeline as the project's own
+  research. That means:
+  - automatic walk-forward with purging and embargo, and costs;
+  - Deflated Sharpe with your own number of tests, PBO and 1,000 random-trade controls;
+  - the 15 frozen criteria.
+
+  You get a local HTML report with a plain verdict (*looks like a real edge*, *indistinguishable from luck* or *not
+  enough data*) and why.
+- **Your runs stay apart:** they go to a local registry (`sandbox-runs/`) that counts your own tests. They never touch
+  the official registry, its N or the frozen criteria, and tests check this.
+- **A strategy template** (`examples/my-strategy.ts`), a deliberate no-edge example (`examples/coin-flip.ts`) and
+  synthetic example candles, so nothing needs to be downloaded.
+- **CSV import** with line-numbered error messages.
+- **`npm run fetch-candles`:** optional public Kraken candles, with no API key, for your own use.
+- **"Luck or edge?" is back in the demo,** as a clearly labelled synthetic illustration next to the real control figures
+  of EXP-0027 and EXP-0028.
+
+### Changed
+
+- **"Plan B" is now the Autopilot** (passive DCA & rebalancing): `npm run demo:autopilot` (`demo:dca` kept as an alias)
+  and `/autopilot/` demo pages. It is still paper only.
+- **Registry sphere:** family labels no longer overlap, and the English page shows readable family names.
+- **README reorganised:** quick start in five steps, what you get, how it works, results, safety, the project story and
+  the roadmap.
+- **GIF** re-recorded at 25 fps.
+- **Roadmap:** the Autopilot's real-money run moves to v1.2.
+
 ## [1.0.1] — 2026-10-28
 
 ### Changed

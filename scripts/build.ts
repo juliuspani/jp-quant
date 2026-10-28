@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ROOTS = ['src', 'scripts', 'test', 'demo'];
+const ROOTS = ['src', 'scripts', 'test', 'demo', 'sandbox', 'examples'];
 
 function tsFiles(dir: string): string[] {
   const out: string[] = [];
