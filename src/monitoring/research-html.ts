@@ -147,7 +147,7 @@ function flowsSvg(f: SphereFrame, r: ResearchSnapshot): string {
     out.push(`<path class="flow" d="${d}" stroke-width="${width(node.count).toFixed(2)}"/><path class="flow-dash" d="${d}"/>`);
     out.push(`<line class="node" x1="230" x2="230" y1="${(node.y - 7).toFixed(1)}" y2="${(node.y + 7).toFixed(1)}"/>`);
     out.push(`<text class="flow-label" x="0" y="${(node.y - 2).toFixed(1)}">${e(familyName(node.key))}</text>`);
-    out.push(`<text class="tk" x="0" y="${(node.y + 13).toFixed(1)}">${e(`${String(node.count)} exp. · ${String(fam?.trials ?? 0)} ${t('pruebas', 'tests')}`)}</text>`);
+    out.push(`<text class="tk" x="0" y="${(node.y + 13).toFixed(1)}">${e(`${String(node.count)} exp. · ${String(fam?.trials ?? 0)} ${(fam?.trials ?? 0) === 1 ? t('prueba', 'test') : t('pruebas', 'tests')}`)}</text>`);
   });
   const present = r.outcomes.filter((o) => o.count > 0);
   const right = column(present.map((o) => ({ key: o.outcome, count: o.count })), 70, f.height - 140);
@@ -165,7 +165,7 @@ function flowsSvg(f: SphereFrame, r: ResearchSnapshot): string {
 
 export function sphereCard(r: ResearchSnapshot): string {
   const legend = r.outcomes.map((o) => `<li>${outcomeTag(o.outcome, ` · ${String(o.count)}`)}</li>`).join('');
-  const families = r.families.map((fam) => `<li><span>${e(familyName(fam.family))}</span><span class="num">${e(`${String(fam.experiments)} exp. · ${String(fam.trials)} ${t('pruebas', 'tests')}`)}</span></li>`).join('');
+  const families = r.families.map((fam) => `<li><span>${e(familyName(fam.family))}</span><span class="num">${e(`${String(fam.experiments)} exp. · ${String(fam.trials)} ${fam.trials === 1 ? t('prueba', 'test') : t('pruebas', 'tests')}`)}</span></li>`).join('');
   return `<section class="card wide">${head(t('Núcleo del registro', 'Registry core'), t('Cada punto es un experimento del registro, con el color de su desenlace y el tamaño según sus pruebas. Entran por familia y salen por desenlace.', 'Each dot is an experiment in the registry, coloured by its outcome and sized by its tests. They come in by family and leave by outcome.'), 'Experiment Registry')}
 <ul class="legend-list">${legend}</ul>
 <div class="chart">${SPHERE_FRAMES.map((f) => sphereSvg(f, r)).join('')}</div>
