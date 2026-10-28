@@ -1,0 +1,16 @@
+# Finales de línea normalizados a LF en el repositorio y en el árbol de trabajo.
+* text=auto eol=lf
+
+# Los hooks de git se ejecutan con sh: nunca CRLF.
+.githooks/* text eol=lf
+
+# Binarios: sin conversión.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "adr": "docs/adr/0019-periodo-del-test-final.md",
+  "periodUtc": { "start": "2026-10-01T00:00:00Z", "endExclusive": "2027-10-01T00:00:00Z" },
+  "exchange": "bitvavo",
+  "universe": "Spot pairs quoted in EUR on the exchange and trading at 2026-10-01T00:00:00Z; pairs delisted during the period stay in.",
+  "researchDataEndUtc": "2026-09-30T23:59:59Z",
+  "stages": [
+    { "stage": 1, "name": "paper-provisional", "step": 31, "opensTestData": false, "basis": "walk-forward and CSCV up to researchDataEndUtc, Deflated Sharpe counting docs/research/02 as prior trials, consultor-quant report" },
+    { "stage": 2, "name": "micro-live", "capital": "about 100 EUR, fixed by ADR in step 32", "notBeforeUtc": "2027-01-01T00:00:00Z", "minForwardMonths": 3, "opensTestData": true, "criteria": "behaviour consistent with expectations, frozen in step 27" },
+    { "stage": 3, "name": "capital-above-micro-live", "notBeforeUtc": "2027-10-01T00:00:00Z", "requiresFullPeriod": true, "opensTestData": true, "criteria": "promotion criteria, frozen in step 27" }
+  ],
+  "rules": "Each opening of test data is a human decision (M-13). No re-optimisation between stages. Failing a stage rejects the strategy.",
+  "frozenOn": "2026-10-07",
+  "dataHash": null
+}

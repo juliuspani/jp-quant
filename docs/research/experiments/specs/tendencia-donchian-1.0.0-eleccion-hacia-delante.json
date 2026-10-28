@@ -1,0 +1,181 @@
+{
+  "autor": "Claude (paso 31, ADR 0043 y 0044)",
+  "familia": "tendencia-donchian-atr",
+  "familia_nueva": false,
+  "solo_eleccion": true,
+  "hipotesis": "La de EXP-0027, sin cambios. Este experimento no la prueba: solo elige en train, con el procedimiento exacto de EXP-0027, la configuración del tramo hacia delante de la comprobación de A (ADR 0043)",
+  "metrica_primaria": "Sharpe anualizado con 365 días, neto de costes, en el train de cada tramo, sin lo purgado ni lo embargado: la puntuación con que EXP-0027 elige. Es dentro de muestra y no decide nada",
+  "criterios": "No aplica: solo elige en train (ADR 0044), sin validaciones medidas ni veredicto. Los criterios de la comprobación hacia delante son los del ADR 0043 §3 y se aplican en el paso 53, después del 2027-10-01",
+  "estrategia": {
+    "nombre": "tendencia-donchian",
+    "version": "1.0.0"
+  },
+  "datos": {
+    "fuente": "Kraken, velas OHLCVT en EUR (paso 19B, ADR 0022)",
+    "dataset": "kraken",
+    "version": "full2026q2+2026q3",
+    "timeframe": "1d",
+    "rango": {
+      "desde": "2013-09-10T00:00:00Z",
+      "hasta": "2026-09-30T00:00:00Z"
+    }
+  },
+  "universo": {
+    "regla": "fija: BTC/EUR y ETH/EUR, el universo de diseño pre-registrado en EXP-0025, que se repite sin cambios por decisión de la persona (ADR 0040). La justificación de aquel pre-registro («los dos pares con más historia y los únicos que cubren los bajistas de 2018 y 2022») era falsa según los manifiestos: LTC/EUR tiene más historia que ETH/EUR, y ETC/EUR y ZEC/EUR también cubren los dos bajistas. Sesgo de supervivencia declarado. Alternativo, el mismo de EXP-0025: los pares en EUR del dataset con velas diarias antes del 2017-01-01 (inicio de la primera validación) que siguen listados al final, salvo los de diseño; REP/EUR queda fuera porque se da de baja dentro del periodo (DATA.md) y liquidar al deslistar sigue pendiente",
+    "simbolos": [
+      "BTC/EUR",
+      "ETH/EUR"
+    ],
+    "alternativos": [
+      "ETC/EUR",
+      "LTC/EUR",
+      "ZEC/EUR"
+    ]
+  },
+  "particiones": {
+    "tramos": [
+      {
+        "train": {
+          "desde": "2014-01-01T00:00:00Z",
+          "hasta": "2017-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2017-01-01T00:00:00Z",
+          "hasta": "2018-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2015-01-01T00:00:00Z",
+          "hasta": "2018-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2018-01-01T00:00:00Z",
+          "hasta": "2019-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2016-01-01T00:00:00Z",
+          "hasta": "2019-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2019-01-01T00:00:00Z",
+          "hasta": "2020-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2017-01-01T00:00:00Z",
+          "hasta": "2020-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2020-01-01T00:00:00Z",
+          "hasta": "2021-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2018-01-01T00:00:00Z",
+          "hasta": "2021-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2021-01-01T00:00:00Z",
+          "hasta": "2022-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2019-01-01T00:00:00Z",
+          "hasta": "2022-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2022-01-01T00:00:00Z",
+          "hasta": "2023-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2020-01-01T00:00:00Z",
+          "hasta": "2023-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2023-01-01T00:00:00Z",
+          "hasta": "2024-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2021-01-01T00:00:00Z",
+          "hasta": "2024-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2024-01-01T00:00:00Z",
+          "hasta": "2025-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2022-01-01T00:00:00Z",
+          "hasta": "2025-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2025-01-01T00:00:00Z",
+          "hasta": "2026-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2023-01-01T00:00:00Z",
+          "hasta": "2026-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2026-01-01T00:00:00Z",
+          "hasta": "2026-09-30T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2023-10-01T00:00:00Z",
+          "hasta": "2026-10-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2026-10-01T00:00:00Z",
+          "hasta": "2027-10-01T00:00:00Z"
+        }
+      }
+    ],
+    "test": null,
+    "purging_velas": 55,
+    "embargo_velas": 55
+  },
+  "costes": {
+    "comision": "0.0025",
+    "spread": "0.00075",
+    "slippage": "0.0005",
+    "multiplicador": 1
+  },
+  "parametros": {
+    "tipo": "rejilla",
+    "rejilla": {
+      "atrPeriod": [
+        20
+      ],
+      "entryPeriod": [
+        20,
+        55
+      ],
+      "exitPeriod": [
+        10,
+        20
+      ],
+      "stopAtr": [
+        2
+      ]
+    }
+  },
+  "semilla": 28,
+  "variantes": 0,
+  "informe": "docs/research/experiments/EXP-0029.md",
+  "notas": "Comprobación hacia delante de A (ADR 0043): la persona pide elegir ya, solo con datos hasta el 2026-09-30, la configuración de su último tramo (train del 2023-10-01 al 2026-10-01). Los 10 primeros tramos son los de EXP-0027 y tienen que repetir su elección; el último valida en el periodo del test final, que no se lee. Contaminación declarada (quant-research §12): Claude y la persona conocen EXP-0025 a EXP-0028"
+}

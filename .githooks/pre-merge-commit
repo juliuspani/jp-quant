@@ -1,0 +1,7 @@
+#!/bin/sh
+# Ninguna fusión se confirma sin pasar check:all sobre el resultado, venga de una rama wip/* o de cualquier
+# otra. `npm run prepare` fija merge.ff=false para que toda fusión cree un commit y pase por aquí.
+set -e
+
+node scripts/scan-secrets.ts --staged
+npm run --silent check:all

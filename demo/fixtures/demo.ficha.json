@@ -1,0 +1,9 @@
+{
+  "etiqueta": "Demostración con datos sintéticos: BASELINE, una estrategia de referencia que no es para operar",
+  "datos": "sinteticos",
+  "estrategia": { "id": "baseline-cierre-ema", "version": "1.0.0", "parametros": { "emaPeriod": 20, "stopFraction": 0.08 } },
+  "temporalidad": "1d",
+  "costes": { "commission": "0.0025", "halfSpread": "0.00075", "minSlippage": "0.0005", "multiplier": 1 },
+  "referencia": "BTC/EUR",
+  "planB": { "objetivo": null, "proximoRebalanceo": null }
+}

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-commit: escaneo de secretos siempre; check:all salvo en ramas wip/*.
+# Las ramas wip/* admiten commits de relevo con checks en rojo, pero no se fusionan sin pasar check:all:
+# de eso se encarga .githooks/pre-merge-commit.
+set -e
+
+node scripts/scan-secrets.ts --staged
+
+branch=$(git symbolic-ref --short -q HEAD || true)
+case "$branch" in
+  wip/*)
+    echo "pre-commit: rama $branch, solo se exige el escaneo de secretos."
+    exit 0
+    ;;
+esac
+
+npm run --silent check:all

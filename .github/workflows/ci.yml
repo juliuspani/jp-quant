@@ -1,0 +1,29 @@
+# check:all (build, typecheck, lint, módulos y pruebas) y el escaneo de secretos en cada push y pull request.
+# Acciones fijadas por SHA; permisos mínimos; sin scripts de instalación (el postinstall de ccxt hace peticiones de red).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Algunas pruebas leen la identidad de autor de git (el sello no lleva datos personales).
+      - run: git config --global user.name "ci" && git config --global user.email "ci@localhost"
+      # Primero el escaneo de secretos: así corre aunque falle alguna prueba (SEC-06).
+      - run: npm run secrets
+      - run: npm run check:all

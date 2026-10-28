@@ -1,0 +1,11 @@
+{
+  "mode": "paper",
+  "exchange": { "id": "binance", "sandbox": false },
+  "quote": "USDT",
+  "capital": { "startingQuote": 1000, "capQuote": 1000 },
+  "core": {
+    "symbols": ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+    "timeframe": "4h"
+  },
+  "dashboard": { "host": "127.0.0.1", "port": 8787 }
+}

@@ -1,0 +1,45 @@
+[
+  {
+    "type": "dependency",
+    "from": "src/broker.ts",
+    "to": "node_modules/ccxt/js/ccxt.d.ts",
+    "unresolvedTo": "ccxt",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "solo-exchange-importa-ccxt"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/main.ts",
+    "to": "node_modules/ccxt/js/ccxt.d.ts",
+    "unresolvedTo": "ccxt",
+    "dependencyTypes": [
+      "npm",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "solo-exchange-importa-ccxt"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/market.ts",
+    "to": "node_modules/ccxt/js/ccxt.d.ts",
+    "unresolvedTo": "ccxt",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "solo-exchange-importa-ccxt"
+    }
+  }
+]

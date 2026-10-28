@@ -1,0 +1,42 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno y secretos (solo .env.example se versiona)
+.env
+.env.*
+!.env.example
+
+# Claves, certificados y almacenes de credenciales
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+secrets/
+.secrets/
+credentials/
+.credentials/
+.aws/
+.ssh/
+
+# Datos operativos del bot: bases de datos, bloqueos y copias
+data/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Registros
+*.log
+logs/
+
+# Lo crea el panel de vista previa de la app: no se versiona (la persona, 2026-10-28)
+.claude/launch.json
+
+# Demo estática generada para GitHub Pages (npm run demo -- --static site)
+site/

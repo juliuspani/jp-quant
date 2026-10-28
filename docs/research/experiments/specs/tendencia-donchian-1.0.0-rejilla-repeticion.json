@@ -1,0 +1,170 @@
+{
+  "autor": "Claude (auditoría quant, parte 10)",
+  "familia": "tendencia-donchian-atr",
+  "familia_nueva": false,
+  "hipotesis": "Los activos con tendencia tienden a continuarla, por infrarreacción inicial y flujos que persiguen el precio: una ruptura del máximo de las 20 o 55 velas anteriores anticipa más subida, con la entrada y la salida de los sistemas de los Turtle elegidas en el train de cada tramo",
+  "metrica_primaria": "Sharpe anualizado con 365 días, neto de costes, de la serie concatenada de los tramos de validación, cada uno con la configuración elegida en su train (docs/PROMOTION_CRITERIA.md, regla 3)",
+  "criterios": "Los de docs/PROMOTION_CRITERIA.md A.3, congelados en el paso 27 y cambiados por la persona el 2026-10-22 (ADR 0030, decisión 9), sin otros más estrictos. Perfil por régimen de Trend following (A.3.9), frente al benchmark de A.3.9 (BTC escalado por la exposición de la estrategia, ADR 0042): en cada bajista (2018 y 2022) pierde como mucho el 50 % de lo que pierde; en alcista captura al menos el 50 % de su subida; en lateral, pérdida anualizada de como mucho el 5 %",
+  "estrategia": {
+    "nombre": "tendencia-donchian",
+    "version": "1.0.0"
+  },
+  "datos": {
+    "fuente": "Kraken, velas OHLCVT en EUR (paso 19B, ADR 0022)",
+    "dataset": "kraken",
+    "version": "full2026q2+2026q3",
+    "timeframe": "1d",
+    "rango": {
+      "desde": "2013-09-10T00:00:00Z",
+      "hasta": "2026-09-30T00:00:00Z"
+    }
+  },
+  "universo": {
+    "regla": "fija: BTC/EUR y ETH/EUR, el universo de diseño pre-registrado en EXP-0025, que se repite sin cambios por decisión de la persona (ADR 0040). La justificación de aquel pre-registro («los dos pares con más historia y los únicos que cubren los bajistas de 2018 y 2022») era falsa según los manifiestos: LTC/EUR tiene más historia que ETH/EUR, y ETC/EUR y ZEC/EUR también cubren los dos bajistas. Sesgo de supervivencia declarado. Alternativo, el mismo de EXP-0025: los pares en EUR del dataset con velas diarias antes del 2017-01-01 (inicio de la primera validación) que siguen listados al final, salvo los de diseño; REP/EUR queda fuera porque se da de baja dentro del periodo (DATA.md) y liquidar al deslistar sigue pendiente",
+    "simbolos": [
+      "BTC/EUR",
+      "ETH/EUR"
+    ],
+    "alternativos": [
+      "ETC/EUR",
+      "LTC/EUR",
+      "ZEC/EUR"
+    ]
+  },
+  "particiones": {
+    "tramos": [
+      {
+        "train": {
+          "desde": "2014-01-01T00:00:00Z",
+          "hasta": "2017-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2017-01-01T00:00:00Z",
+          "hasta": "2018-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2015-01-01T00:00:00Z",
+          "hasta": "2018-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2018-01-01T00:00:00Z",
+          "hasta": "2019-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2016-01-01T00:00:00Z",
+          "hasta": "2019-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2019-01-01T00:00:00Z",
+          "hasta": "2020-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2017-01-01T00:00:00Z",
+          "hasta": "2020-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2020-01-01T00:00:00Z",
+          "hasta": "2021-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2018-01-01T00:00:00Z",
+          "hasta": "2021-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2021-01-01T00:00:00Z",
+          "hasta": "2022-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2019-01-01T00:00:00Z",
+          "hasta": "2022-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2022-01-01T00:00:00Z",
+          "hasta": "2023-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2020-01-01T00:00:00Z",
+          "hasta": "2023-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2023-01-01T00:00:00Z",
+          "hasta": "2024-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2021-01-01T00:00:00Z",
+          "hasta": "2024-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2024-01-01T00:00:00Z",
+          "hasta": "2025-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2022-01-01T00:00:00Z",
+          "hasta": "2025-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2025-01-01T00:00:00Z",
+          "hasta": "2026-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2023-01-01T00:00:00Z",
+          "hasta": "2026-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2026-01-01T00:00:00Z",
+          "hasta": "2026-09-30T00:00:00Z"
+        }
+      }
+    ],
+    "test": null,
+    "purging_velas": 55,
+    "embargo_velas": 55
+  },
+  "costes": {
+    "comision": "0.0025",
+    "spread": "0.00075",
+    "slippage": "0.0005",
+    "multiplicador": 1
+  },
+  "parametros": {
+    "tipo": "rejilla",
+    "rejilla": {
+      "atrPeriod": [
+        20
+      ],
+      "entryPeriod": [
+        20,
+        55
+      ],
+      "exitPeriod": [
+        10,
+        20
+      ],
+      "stopAtr": [
+        2
+      ]
+    }
+  },
+  "semilla": 28,
+  "variantes": 22,
+  "informe": "docs/research/experiments/EXP-0027.md",
+  "notas": "Repetición de EXP-0025, una sola vez y como estaba pre-registrado (hipótesis, datos, universo, tramos, purging y embargo, costes, rejilla, semilla y variantes sin cambios), por decisión de la persona tras la auditoría quant ciega (2026-10-20). Corre con las correcciones de los ADR 0035 a 0039 y con los criterios cambiados por la persona el 2026-10-22 (ADR 0030, decisión 9; ADR 0041 y 0042). Es un experimento nuevo que cuenta en N; EXP-0025 sigue RECHAZADA con los criterios de entonces. Contaminación declarada (quant-research §12): Claude y la persona conocen el resultado de EXP-0025 y la auditoría que lo revisó; nada del diseño cambia a la vista de él. La regla de universo dice ahora la verdad (ADR 0040), con los mismos pares"
+}

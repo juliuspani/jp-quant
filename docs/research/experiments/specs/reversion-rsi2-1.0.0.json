@@ -1,0 +1,156 @@
+{
+  "autor": "Claude (paso 25)",
+  "familia_nueva": false,
+  "metrica_primaria": "Sharpe anualizado con 365 días, fuera de muestra y neto de costes (quant-research §2), por tramo de validación; la concatenación de los tramos y el veredicto son de los pasos 26 y 27",
+  "criterios": "Los de quant-research §9 (ADR 0002), sin otros más estrictos",
+  "datos": {
+    "fuente": "Kraken, velas OHLCVT en EUR (paso 19B, ADR 0022)",
+    "dataset": "kraken",
+    "version": "full2026q2+2026q3",
+    "timeframe": "1d",
+    "rango": {
+      "desde": "2014-01-01T00:00:00Z",
+      "hasta": "2026-09-30T00:00:00Z"
+    }
+  },
+  "universo": {
+    "regla": "fija: los dos pares con más historia, los únicos que cubren los bajistas de 2018 y 2022; elegidos hoy, con sesgo de supervivencia declarado",
+    "simbolos": [
+      "BTC/EUR",
+      "ETH/EUR"
+    ]
+  },
+  "particiones": {
+    "tramos": [
+      {
+        "train": {
+          "desde": "2014-01-01T00:00:00Z",
+          "hasta": "2017-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2017-01-01T00:00:00Z",
+          "hasta": "2018-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2015-01-01T00:00:00Z",
+          "hasta": "2018-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2018-01-01T00:00:00Z",
+          "hasta": "2019-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2016-01-01T00:00:00Z",
+          "hasta": "2019-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2019-01-01T00:00:00Z",
+          "hasta": "2020-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2017-01-01T00:00:00Z",
+          "hasta": "2020-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2020-01-01T00:00:00Z",
+          "hasta": "2021-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2018-01-01T00:00:00Z",
+          "hasta": "2021-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2021-01-01T00:00:00Z",
+          "hasta": "2022-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2019-01-01T00:00:00Z",
+          "hasta": "2022-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2022-01-01T00:00:00Z",
+          "hasta": "2023-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2020-01-01T00:00:00Z",
+          "hasta": "2023-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2023-01-01T00:00:00Z",
+          "hasta": "2024-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2021-01-01T00:00:00Z",
+          "hasta": "2024-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2024-01-01T00:00:00Z",
+          "hasta": "2025-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2022-01-01T00:00:00Z",
+          "hasta": "2025-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2025-01-01T00:00:00Z",
+          "hasta": "2026-01-01T00:00:00Z"
+        }
+      },
+      {
+        "train": {
+          "desde": "2023-01-01T00:00:00Z",
+          "hasta": "2026-01-01T00:00:00Z"
+        },
+        "validation": {
+          "desde": "2026-01-01T00:00:00Z",
+          "hasta": "2026-09-30T00:00:00Z"
+        }
+      }
+    ],
+    "test": null,
+    "purging_velas": 0,
+    "embargo_velas": 0
+  },
+  "costes": {
+    "comision": "0.0025",
+    "spread": "0.00075",
+    "slippage": "0.0005",
+    "multiplicador": 1
+  },
+  "semilla": 25,
+  "notas": "Primera ronda de la Strategy Library (ADR 0028): parámetros de la literatura, sin optimizar. Train no ajusta nada; por eso purging y embargo son 0. Ningún par se da de baja en el periodo",
+  "familia": "reversion-rsi2",
+  "hipotesis": "Los movimientos extremos a corto plazo tienden a revertir, porque quien vende con urgencia paga a quien provee liquidez: una sobreventa de 2 días sobre la SMA 200 vuelve a su media de 5",
+  "estrategia": {
+    "nombre": "reversion-rsi2",
+    "version": "1.0.0"
+  },
+  "parametros": {
+    "tipo": "valores",
+    "valores": {
+      "trendPeriod": 200,
+      "rsiPeriod": 2,
+      "rsiEntry": 10,
+      "exitPeriod": 5,
+      "atrPeriod": 20,
+      "stopAtr": 2
+    }
+  },
+  "informe": "docs/research/experiments/EXP-0022.md"
+}
