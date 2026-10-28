@@ -22,8 +22,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
-      # Algunas pruebas leen la identidad de autor de git (el sello no lleva datos personales).
-      - run: git config --global user.name "ci" && git config --global user.email "ci@localhost"
+      # Algunas pruebas leen la identidad de autor de git (el sello no lleva datos personales). Un nombre largo y raro:
+      # uno corto como «ci» aparece por casualidad dentro del SVG del sello y la prueba lo tomaría por el autor.
+      - run: git config --global user.name "jp-quant-runner" && git config --global user.email "jp-quant-runner@localhost"
       # Primero el escaneo de secretos: así corre aunque falle alguna prueba (SEC-06).
       - run: npm run secrets
       - run: npm run check:all
