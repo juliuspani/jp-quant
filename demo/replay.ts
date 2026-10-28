@@ -34,13 +34,13 @@ export const PUBLIC_DEMO_LIMITS: RiskLimits = { ...DEFAULT_RISK_LIMITS, maxExpos
 export const DEMO_COSTS = { commission: '0.0025', halfSpread: '0.00075', minSlippage: '0.0005', multiplier: 1 } as const;
 
 /** Velas diarias de un paseo aleatorio por tramos: subidas, bajadas y laterales, para que haya entradas y salidas. */
-export function demoCandles(): HistoricalCandle[] {
+export function demoCandles(days: number = DAYS): HistoricalCandle[] {
   const out: HistoricalCandle[] = [];
   for (const [symbol, start] of STARTS) {
     const rng = seededRng(DEMO_SEED, symbol);
     let previous = start;
-    for (let i = 0; i < DAYS; i++) {
-      const drift = [0.004, -0.006, 0.0005, -0.003, 0.005][Math.floor(i / 30)] ?? 0;
+    for (let i = 0; i < days; i++) {
+      const drift = [0.004, -0.006, 0.0005, -0.003, 0.005][Math.floor(i / 30) % 5] ?? 0; // cada 150 días, otra vuelta
       const shock = (rng.next() + rng.next() + rng.next() - 1.5) * 0.05;
       const close = previous * (1 + drift + shock);
       const open = previous;
@@ -85,6 +85,19 @@ export function demoSpec(riskLimits: RiskLimits = DEMO_LIMITS): BacktestSpec<Bas
     quoteCurrency: 'EUR',
     riskLimits,
   };
+}
+
+// La demo pública (paso 49, revisión): 300 días y el calentamiento de la estrategia dentro de los datos. El replay empieza
+// en la primera vela y opera desde que las features están listas; con DAYS y WARMUP, el replay empezaba antes del primer
+// dato (la primera reconciliación salía fechada antes del periodo) y la estrategia no podía operar hasta el día 100.
+// El tramo acaba una vela antes del último dato: una orden decidida en la última vela evaluada todavía tiene mercado en
+// el venue simulado. Si no, caducaba sin ejecutarse y la posición quedaba al final sin stop, un efecto del borde de los
+// datos y no del sistema.
+const PUBLIC_DAYS = 300;
+
+export function publicDemoSpec(): BacktestSpec<BaselineParams> {
+  const base = demoSpec(PUBLIC_DEMO_LIMITS);
+  return { ...base, candles: demoCandles(PUBLIC_DAYS), from: DEMO_T0 + base.strategy.warmupBars * DAY, to: DEMO_T0 + (PUBLIC_DAYS - 1) * DAY };
 }
 
 export interface DemoRun {

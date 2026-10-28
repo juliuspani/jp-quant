@@ -7,6 +7,7 @@
 // - Anillo de marcas radiales finas (elegido por la persona en el paso 41C). A 16 px (favicon) se dibuja con la mitad de
 //   marcas y trazos más gruesos, para que se lea.
 import { createHash } from 'node:crypto';
+import { t } from './i18n.ts';
 
 export const PROJECT_NAME = 'JP Quant';
 export const FIRST_COMMIT = '902eb0a7a7cc618c1c00d9de9f21522dc571fad8';
@@ -75,7 +76,8 @@ export function sealSvg(options: SealOptions = {}): string {
   const ringGroup = `<g fill="none" stroke="${color}" stroke-linecap="round">${marks.join('')}</g>`;
   const inner = small ? '' : `<circle cx="100" cy="100" r="57" fill="none" stroke="${color}" stroke-width="0.8" stroke-opacity="0.45"/>`;
   const monogram = `<path d="${MONOGRAM}" fill="none" stroke="${color}" stroke-width="${small ? '12' : '3.4'}" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const label = `Sello de ${PROJECT_NAME}, generado del primer commit ${(options.hash ?? FIRST_COMMIT).slice(0, 7)}`;
+  const short = (options.hash ?? FIRST_COMMIT).slice(0, 7);
+  const label = t(`Sello de ${PROJECT_NAME}, generado del primer commit ${short}`, `${PROJECT_NAME} seal, generated from the first commit ${short}`);
   if (options.standalone === true) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="${label}"><title>${label}</title><rect width="200" height="200" rx="40" fill="${SEAL_BACKGROUND}"/>${inner}${ringGroup}${monogram}</svg>`;
   }

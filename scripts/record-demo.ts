@@ -13,7 +13,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { DEMO_HOST, demoPage, demoServer } from '../demo/demo.ts';
+import { DEMO_HOST, demoPages, demoServer } from '../demo/demo.ts';
 
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
   const profile = join(work, 'perfil');
   const frames = join(work, 'frames');
   mkdirSync(frames);
-  const server = demoServer(demoPage());
+  const server = demoServer(demoPages());
   await new Promise<void>((resolve) => server.listen(0, DEMO_HOST, resolve));
   const url = `http://${DEMO_HOST}:${String((server.address() as AddressInfo).port)}/`;
   const browser = spawn(values.navegador, [

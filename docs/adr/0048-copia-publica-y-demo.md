@@ -97,3 +97,28 @@ Sobre la copia, de solo lectura: 0 Critical, 3 High, 2 Medium y 4 Low.
   - **SEC-08, se deja.** El país de residencia en el ADR 0018 y la hora de Madrid en la página.
 - **Riesgo documentado:** SEC-09, el puerto de depuración de `scripts/record-demo.ts` mientras graba (herramienta
   manual, perfil temporal, página sintética).
+
+## Revisión después de publicar (2026-10-28)
+
+La persona revisó la v1.0.0 publicada y pidió cinco cambios, en un commit nuevo y sin mover la etiqueta:
+
+1. **Resultados del README:** el veredicto va en la primera columna, y una línea avisa de que el Sharpe neto solo no
+   decide.
+2. **Embudo de la demo:** los 2 «que pasan todos los criterios» eran experimentos inventados del registro sintético
+   (EXP-0031 y EXP-0034, familias `demo-*`). La persona decidió que la demo pública lea el **registro real**, que ya es
+   público y no lleva precios: el embudo dice «0 estrategias candidatas aprobadas». Sin curvas del control, porque el
+   registro real no las guardó; la tarjeta lo explica. El registro sintético queda solo para las pruebas.
+3. **Plan B:** la tarjeta de la demo sale del replay del bot de plan B (`DashboardPage.planB`) y enlaza a su página.
+   Sin reparto objetivo, un estado vacío que lo explica.
+4. **Coherencia del replay público** (`publicDemoSpec`): 300 días con el calentamiento dentro de los datos. Antes, el
+   replay empezaba 100 días antes del primer dato, así que la primera reconciliación salía fechada antes del periodo.
+   El tramo acaba una vela antes del último dato. Antes, la venta decidida en la última vela caducaba sin mercado y BTC
+   quedaba sin stop: era un efecto del borde de los datos.
+   - El hueco de ETH/EUR sí es intencionado, y la introducción lo dice.
+   - Se ve además un riesgo real del sistema, que no se corrige aquí: tras una salida que no se ejecuta, la posición
+     queda sin stop hasta la vela siguiente, porque el stop se canceló para vender. Va con los pasos 35 y 36 (Execution
+     completo).
+5. **Inglés y español** (`src/monitoring/i18n.ts`): la página se genera entera en un idioma, `t(es, en)`, con cifras y
+   fechas de cada idioma. Los motivos conocidos del diario se traducen solo al mostrarlos; el diario no cambia. La demo
+   pública genera cuatro páginas: `/` y `/plan-b/` en inglés, y `/es/` y `/plan-b/es/` en español. El selector son
+   enlaces entre ellas, así que la CSP no cambia de forma y el script de la página es el mismo texto, con el mismo hash.

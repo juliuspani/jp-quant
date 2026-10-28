@@ -5,6 +5,22 @@ repository starts at v1.0.0 with a fresh history.
 
 **Last closed step:** 31 (the decision point of the first research stretch; the plan B steps 41B, 41C and 49 followed).
 
+## [Unreleased] (proposed as 1.0.1)
+
+### Changed
+
+- README results table: the verdict comes first, with a note that net Sharpe alone is misleading.
+- The demo shows the study's real experiment registry: the criteria funnel ends at 0 approved candidate strategies.
+  The synthetic registry is only used by the tests.
+- The demo's plan B card is filled from the plan B bot replay and links to its page.
+- Public replay window: the warm-up is inside the data and the run ends one candle before the last one, so the first
+  reconciliation falls inside the period and no position ends without its stop. The ETH/EUR data gap is deliberate,
+  and the page says so.
+- The dashboard is in English and Spanish: English by default on GitHub Pages, with a language switch. The CSP and the
+  hashed page script are unchanged.
+- Roadmap: the plan B bot already exists in paper (v1.0); v1.1 is its automatic run with real money, after its own
+  safety checks.
+
 ## [1.0.0] — 2026-10-28
 
 First public release.

@@ -10,7 +10,7 @@ Its research found no strategy worth trading, and this repository says so, with 
 [![tests](https://img.shields.io/github/actions/workflow/status/juliuspani/jp-quant/ci.yml?branch=main&label=tests)](https://github.com/juliuspani/jp-quant/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Live demo:** <https://juliuspani.github.io/jp-quant/> (a static page with synthetic data: no server, no keys, no money).
+**Live demo:** <https://juliuspani.github.io/jp-quant/>, in English, or [in Spanish](https://juliuspani.github.io/jp-quant/es/). It is a static page: no server, no keys, no money. The replay and the plan B use synthetic data; the research and criteria views show the study's real registry.
 
 > **Not financial advice.** This is a research and engineering project. It does not recommend any investment, and
 > nothing here promises returns. Its own research concluded that none of the strategies it tested should be traded.
@@ -26,9 +26,9 @@ npm run demo
 ```
 
 `npm run demo` runs a deterministic replay on synthetic prices through the real pipeline (Strategy → Risk → Execution
-against a simulated exchange), builds the dashboard and opens it at `http://127.0.0.1:8790/`. The server only serves that
-read-only page on your machine. Use `npm run demo -- --static site` to write the same page as a static file. The
-dashboard's labels are in Spanish, the project's working language.
+against a simulated exchange), builds the dashboard and opens it at `http://127.0.0.1:8790/`. The server only serves the
+read-only demo pages on your machine. Use `npm run demo -- --static site` to write the same pages as static files.
+The dashboard is in English, with a switch to Spanish, the project's working language.
 
 ## Plan B bot: DCA and rebalancing in paper
 
@@ -134,13 +134,15 @@ criteria in [docs/PROMOTION_CRITERIA.md](docs/PROMOTION_CRITERIA.md).
 ## Results
 
 Two strategies taken from the literature were tested on Kraken EUR pairs, with daily candles from 2017-01-01 to
-2026-09-30 in ten walk-forward folds:
+2026-09-30 in ten walk-forward folds.
 
-| Strategy | Experiment | Net Sharpe | Deflated Sharpe (family · global) | Max drawdown | Trades | Verdict |
+*Net Sharpe alone is misleading: read the Deflated Sharpe and the verdict. No strategy was approved.*
+
+| Verdict | Strategy | Experiment | Deflated Sharpe (family · global; needs ≥ 0.95) | Max drawdown (needs ≤ 10 %) | Trades (needs ≥ 100) | Net Sharpe (not decisive) |
 |---|---|---|---|---|---|---|
-| Donchian trend following (A) | [EXP-0027](docs/research/experiments/EXP-0027.md) | 1.47 | 0.48 · 0.39 | 20.5 % | 79 | **Rejected** |
-| RSI(2) mean reversion (B) | [EXP-0028](docs/research/experiments/EXP-0028.md) | 0.41 | 0.14 · 0.07 | 1.4 % | 38 | **Rejected** |
-| Reproduction of A | [EXP-0030](docs/research/experiments/EXP-0030.md) | 1.47 | 0.44 (family *N* = 183) | 20.5 % | 79 | Same verdict |
+| **REJECTED** | Donchian trend following (A) | [EXP-0027](docs/research/experiments/EXP-0027.md) | 0.48 · 0.39 | 20.5 % | 79 | 1.47 |
+| **REJECTED** | RSI(2) mean reversion (B) | [EXP-0028](docs/research/experiments/EXP-0028.md) | 0.14 · 0.07 | 1.4 % | 38 | 0.41 |
+| **REJECTED** (reproduction of A) | Donchian trend following (A) | [EXP-0030](docs/research/experiments/EXP-0030.md) | 0.44 (family *N* = 183) | 20.5 % | 79 | 1.47 |
 
 The bar was a Deflated Sharpe of at least 0.95, a drawdown of at most 10 %, at least 100 trades and a pass on stress,
 regime and parameter-stability tests ([docs/DECISION_POINT.md](docs/DECISION_POINT.md)).
@@ -212,11 +214,11 @@ story, including the negative results.
 
 ## Roadmap
 
-- **v1.0 (this release):** the research platform, the read-only console and the study, with its negative result.
-- **v1.1:** an automatic passive investor. It will make regular purchases and rebalance towards a target allocation,
-  and it does not try to beat the market. It will start in paper mode. It will only move to real money after passing
-  its own safety checks: the capital guard, the pre-live gate and the manual procedures in
-  [SECURITY_AND_TRADING_INVARIANTS.md](SECURITY_AND_TRADING_INVARIANTS.md).
+- **v1.0 (this release):** the research platform, the read-only console and the study, with its negative result. The
+  passive plan B bot (regular purchases and rebalancing) **already exists, in paper only**: `npm run demo:dca`.
+- **v1.1:** that passive investor running automatically with real money. It does not try to beat the market. It will
+  only be switched on after passing its own safety checks: the capital guard, the pre-live gate and the manual
+  procedures in [SECURITY_AND_TRADING_INVARIANTS.md](SECURITY_AND_TRADING_INVARIANTS.md).
 
 ## Documentation
 

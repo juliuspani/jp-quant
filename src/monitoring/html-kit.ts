@@ -4,6 +4,7 @@
 // - El significado nunca va solo en el color: las subidas y bajadas llevan icono y signo; los estados, un punto y texto.
 import { Decimal } from '../shared/decimal.ts';
 import { toUtcIso, type UtcMillis } from '../shared/time.ts';
+import { lang, t } from './i18n.ts';
 
 export function escapeHtml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
@@ -11,13 +12,14 @@ export function escapeHtml(value: string): string {
 
 export const e = escapeHtml;
 
-// ---- Cifras: separador de miles «.» y decimal «,» ----
+// ---- Cifras: en español, miles «.» y decimal «,»; en inglés, miles «,» y decimal «.» ----
 
 export function grouped(text: string): string {
   const negative = text.startsWith('-');
   const [whole = '0', decimals] = (negative ? text.slice(1) : text).split('.');
-  const withSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${negative ? '−' : ''}${withSeparators}${decimals === undefined ? '' : `,${decimals}`}`;
+  const [thousands, point] = lang() === 'en' ? [',', '.'] : ['.', ','];
+  const withSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
+  return `${negative ? '−' : ''}${withSeparators}${decimals === undefined ? '' : `${point}${decimals}`}`;
 }
 
 /** Dos decimales siempre: la forma canónica de Decimal quita los ceros finales. */
@@ -80,13 +82,14 @@ export function status(tone: Tone, text: string): string {
 // ---- Fechas: hora de Madrid a la vista y UTC en el title ----
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'] as const;
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 const MADRID = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Europe/Madrid', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 });
 
 export function madrid(at: UtcMillis): { readonly day: string; readonly month: string; readonly year: string; readonly time: string } {
   const parts = new Map(MADRID.formatToParts(at).map((p) => [p.type, p.value]));
-  const month = MONTHS[Number(parts.get('month')) - 1] ?? '?';
+  const month = (lang() === 'en' ? MONTHS_EN : MONTHS)[Number(parts.get('month')) - 1] ?? '?';
   return { day: parts.get('day') ?? '?', month, year: parts.get('year') ?? '?', time: `${parts.get('hour') ?? '?'}:${parts.get('minute') ?? '?'}` };
 }
 
@@ -156,7 +159,7 @@ export function withCurrency(number: string, currency: string): string {
 /** Solo en el móvil: las 5 primeras filas en una línea compacta y el resto tras «Ver todas» (details: sin JavaScript). */
 export const COMPACT_LINES = 5;
 
-export function compactLines(lines: readonly (readonly string[])[], empty: string, more = "Ver todas"): string {
+export function compactLines(lines: readonly (readonly string[])[], empty: string, more = t('Ver todas', 'See all')): string {
   if (lines.length === 0) return `<p class="note only-sm">${e(empty)}</p>`;
   const li = (cells: readonly string[]): string => `<li>${cells.map((c) => `<span>${c}</span>`).join('')}</li>`;
   const rest = lines.slice(COMPACT_LINES);

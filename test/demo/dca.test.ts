@@ -73,9 +73,10 @@ test('al final, cada posición tiene su stop y el reparto queda cerca del objeti
 });
 
 test('la página del plan B es la del dashboard, con su ficha y la reproducción', () => {
-  const html = planBPage();
-  assert.equal(planBPage(), html);
+  const html = planBPage('es');
+  assert.equal(planBPage('es'), html);
   assert.ok(html.includes('bot de plan B') && html.includes('Replay en marcha'));
+  assert.ok(planBPage('en').includes('plan B bot') && planBPage('en').includes('Replay in motion'));
 });
 
 test('un plan inválido no construye el bot', () => {

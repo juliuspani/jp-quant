@@ -3,6 +3,7 @@
 // Las curvas son float: solo se pintan.
 import type { UtcMillis } from '../shared/time.ts';
 import { day, e, float, madrid, NBSP } from './html-kit.ts';
+import { t } from './i18n.ts';
 
 export interface Frame {
   readonly cls: 'sm' | 'lg';
@@ -104,19 +105,19 @@ export function mainChart(f: Frame, at: readonly UtcMillis[], system: readonly n
   const digits = step < 1 ? 1 : 0;
   const lastSystem = system.at(-1) ?? 100;
   const lastBench = bench?.at(-1) ?? null;
-  const labels = [{ cls: 'end-sys', name: 'Sistema', value: float(lastSystem, 1), y: y(lastSystem) }];
+  const labels = [{ cls: 'end-sys', name: t('Sistema', 'System'), value: float(lastSystem, 1), y: y(lastSystem) }];
   if (lastBench !== null) labels.push({ cls: 'end-bench', name: benchName, value: float(lastBench, 1), y: y(lastBench) });
   let hits = '';
   if (f.cls === 'lg') {
     // Ayuda al pasar el ratón sin JavaScript: una franja invisible por instante, con su <title>.
     const half = n === 1 ? plotW / 2 : plotW / (n - 1) / 2;
-    hits = at.map((t, i) => {
+    hits = at.map((when, i) => {
       const b = bench?.[i];
-      const label = `${day(t)} · Sistema ${float(system[i] ?? 0, 1)}${b === undefined ? '' : ` · ${benchName} ${float(b, 1)}`}`;
+      const label = `${day(when)} · ${t('Sistema', 'System')} ${float(system[i] ?? 0, 1)}${b === undefined ? '' : ` · ${benchName} ${float(b, 1)}`}`;
       return `<rect class="hit" x="${(x(i) - half).toFixed(1)}" y="${String(f.top)}" width="${(2 * half).toFixed(1)}" height="${String(plotH)}"><title>${e(label)}</title></rect>`;
     }).join('');
   }
-  return `<svg class="${f.cls}" viewBox="0 0 ${String(f.width)} ${String(f.height)}" role="img" aria-label="${e(`Sistema ${float(lastSystem, 1)} frente a ${benchName} ${lastBench === null ? 'sin datos' : float(lastBench, 1)}, en base 100`)}">
+  return `<svg class="${f.cls}" viewBox="0 0 ${String(f.width)} ${String(f.height)}" role="img" aria-label="${e(`${t('Sistema', 'System')} ${float(lastSystem, 1)} ${t('frente a', 'against')} ${benchName} ${lastBench === null ? t('sin datos', 'no data') : float(lastBench, 1)}, ${t('en base 100', 'base 100')}`)}">
 ${yGrid(f, lo, hi, step, y, (v) => float(v, digits), 100)}
 ${bench === null ? '' : `<polyline class="ln ln-bench" points="${points(bench, x, y)}"/>`}
 <polyline class="ln ln-sys" points="${points(system, x, y)}"/>
@@ -139,7 +140,7 @@ export function drawdownChart(f: Frame, at: readonly UtcMillis[], drawdown: read
   const digits = step < 1 ? 1 : 0;
   const line = points(drawdown, x, y);
   const area = `M${x(0).toFixed(1)},${y(0).toFixed(1)} L${line.replaceAll(' ', ' L')} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} Z`;
-  return `<svg class="${f.cls}" viewBox="0 0 ${String(f.width)} ${String(f.height)}" role="img" aria-label="${e(`Caída desde el máximo; la peor, ${float(worst, 1)}${NBSP}%`)}">
+  return `<svg class="${f.cls}" viewBox="0 0 ${String(f.width)} ${String(f.height)}" role="img" aria-label="${e(`${t('Caída desde el máximo; la peor', 'Drawdown from the peak; worst')}, ${float(worst, 1)}${NBSP}%`)}">
 ${yGrid(f, lo, 0, step, y, (v) => `${float(v, digits)}${NBSP}%`, 0)}
 <path class="area-dd" d="${area}"/>
 <polyline class="ln-dd" points="${line}"/>

@@ -23,7 +23,7 @@ test('los nombres y el orden de los criterios son los de analytics/criteria.ts',
   const source = readFileSync(join(ROOT, 'src', 'analytics', 'criteria.ts'), 'utf8');
   const found = [...source.matchAll(/'(A\.3\.\d+)', '([^']+)'/g)].map((m) => ({ id: m[1], label: m[2] }));
   const unique = found.filter((c, i) => found.findIndex((d) => d.id === c.id) === i);
-  assert.deepEqual(unique, CRITERIA);
+  assert.deepEqual(unique, CRITERIA.map(({ id, label }) => ({ id, label })));
 });
 
 test('desenlace de cada experimento según su estado y su veredicto', () => {

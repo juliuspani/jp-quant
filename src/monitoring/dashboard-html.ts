@@ -15,6 +15,7 @@ import type { AlertLevel, DashboardMode, DashboardSnapshot } from './dashboard.t
 import {
   amount, compactLines, day, decimalSign, delta, e, escapeHtml, float, floatPercent, head, kpi, madrid, money, NBSP, percent, plain, status, table, utc, when, withCurrency,
 } from './html-kit.ts';
+import { lang, phrase, t } from './i18n.ts';
 import { PAGE_SCRIPT, PAGE_SCRIPT_HASH } from './page-script.ts';
 import { playbackCard } from './playback-html.ts';
 import { experimentsCard, funnelCards, luckCards, MAX_LUCK_TABS, RECENT_EXPERIMENTS, researchBrief, sphereCard } from './research-html.ts';
@@ -23,17 +24,22 @@ import { FIRST_COMMIT, PROJECT_NAME, sealFavicon, sealSvg } from './seal.ts';
 
 export { escapeHtml };
 
-const MODES: Readonly<Record<DashboardMode, { readonly title: string; readonly detail: string }>> = {
-  REPLAY: { title: 'REPLAY', detail: 'Simulación sobre un diario grabado. Sin dinero real.' },
-  PAPER: { title: 'PAPER', detail: 'Datos en vivo y dinero ficticio.' },
-  SHADOW: { title: 'SHADOW', detail: 'Cuenta real en solo lectura. No se transmite ninguna orden.' },
-  LIVE: { title: 'LIVE', detail: 'DINERO REAL.' },
-};
+function modes(): Readonly<Record<DashboardMode, { readonly title: string; readonly detail: string }>> {
+  return {
+    REPLAY: { title: 'REPLAY', detail: t('Simulación sobre un diario grabado. Sin dinero real.', 'Simulation over a recorded journal. No real money.') },
+    PAPER: { title: 'PAPER', detail: t('Datos en vivo y dinero ficticio.', 'Live data and paper money.') },
+    SHADOW: { title: 'SHADOW', detail: t('Cuenta real en solo lectura. No se transmite ninguna orden.', 'Real account, read only. No order is sent.') },
+    LIVE: { title: 'LIVE', detail: t('DINERO REAL.', 'REAL MONEY.') },
+  };
+}
 
 export interface DashboardPage {
   readonly snapshot: DashboardSnapshot;
   readonly research: ResearchSnapshot | null; // null: generado sin registro
   readonly commit: string | null; // hash corto del último commit, si se conoce
+  readonly languages?: { readonly es: string; readonly en: string }; // enlaces del selector de idioma; sin ellos, no hay selector
+  readonly planB?: DashboardSnapshot; // el replay del bot de plan B, para su tarjeta (demo pública)
+  readonly planBLink?: string; // enlace a la página completa del bot de plan B
 }
 
 const CSS = `
@@ -133,6 +139,7 @@ td.long{white-space:normal;min-width:14rem;color:var(--muted)}
 .pb-ev[hidden]{display:none}.pb-ev{display:flex;flex-wrap:wrap;gap:.2rem .9rem;padding:.3rem 0;border-top:1px solid var(--grid);color:var(--muted)}.pb-ev b{font-weight:500;color:var(--text);min-width:4.5em}.pb-ev.ev-risk b{color:var(--warn)}
 .anim .pb-ev:not([hidden]){animation:pbin .4s ease-out}
 @keyframes pbin{from{opacity:0;transform:translateY(-4px)}}
+.langs{display:flex;gap:.6rem;font:500 11px/1 var(--mono);letter-spacing:.12em}.langs a{color:var(--muted);text-decoration:none;padding:.3rem .2rem;border-bottom:1px solid transparent}.langs a:hover,.langs a:focus-visible{color:var(--text)}.langs a[aria-current]{color:var(--text);border-color:var(--text)}
 .ln-dd{fill:none;stroke:var(--strat);stroke-width:1}.area-dd{fill:var(--strat);fill-opacity:.2}
 .hit{fill:transparent}.hit:hover{fill:rgba(237,237,237,.04)}
 .wire{fill:none;stroke:#3A3A3A;stroke-width:.6;opacity:.55}
@@ -200,19 +207,20 @@ const CSS_HASH = createHash('sha256').update(CSS, 'utf8').digest('base64');
 /** La CSP: nada salvo su hoja de estilos y su script, por su hash, y el favicon en data URI. La comprueban las pruebas. */
 export const DASHBOARD_CSP = `default-src 'none'; style-src 'sha256-${CSS_HASH}'; script-src 'sha256-${PAGE_SCRIPT_HASH}'; img-src data:; base-uri 'none'; form-action 'none'`;
 
-const SIDES: ReadonlyMap<string, string> = new Map([['buy', 'Compra'], ['sell', 'Venta']]);
-const KINDS: ReadonlyMap<string, string> = new Map([['entry', 'Entrada'], ['exit', 'Salida'], ['protective_stop', 'Stop de protección'], ['stop_update', 'Ajuste del stop']]);
-const ORDER_TYPES: ReadonlyMap<string, string> = new Map([['market', 'A mercado'], ['limit', 'Limitada'], ['stop_market', 'Stop a mercado'], ['stop_limit', 'Stop limitada']]);
-const ORDER_STATES: ReadonlyMap<string, string> = new Map([
-  ['PENDING_SEND', 'Por enviar'], ['SENT', 'Enviada'], ['OPEN', 'Abierta'], ['PARTIALLY_FILLED', 'Ejecutada en parte'], ['CANCEL_PENDING', 'Cancelándose'],
-  ['FILLED', 'Ejecutada'], ['CANCELED', 'Cancelada'], ['EXPIRED', 'Caducada'], ['REJECTED', 'Rechazada'], ['NOT_SENT', 'No enviada'], ['UNKNOWN', 'En duda'],
+// Funciones y no constantes: el texto depende del idioma de la página (i18n.ts).
+const sides = (): ReadonlyMap<string, string> => new Map([['buy', t('Compra', 'Buy')], ['sell', t('Venta', 'Sell')]]);
+const kinds = (): ReadonlyMap<string, string> => new Map([['entry', t('Entrada', 'Entry')], ['exit', t('Salida', 'Exit')], ['protective_stop', t('Stop de protección', 'Protective stop')], ['stop_update', t('Ajuste del stop', 'Stop update')]]);
+const orderTypes = (): ReadonlyMap<string, string> => new Map([['market', t('A mercado', 'Market')], ['limit', t('Limitada', 'Limit')], ['stop_market', t('Stop a mercado', 'Stop market')], ['stop_limit', t('Stop limitada', 'Stop limit')]]);
+const orderStates = (): ReadonlyMap<string, string> => new Map([
+  ['PENDING_SEND', t('Por enviar', 'To send')], ['SENT', t('Enviada', 'Sent')], ['OPEN', t('Abierta', 'Open')], ['PARTIALLY_FILLED', t('Ejecutada en parte', 'Partly filled')], ['CANCEL_PENDING', t('Cancelándose', 'Cancelling')],
+  ['FILLED', t('Ejecutada', 'Filled')], ['CANCELED', t('Cancelada', 'Cancelled')], ['EXPIRED', t('Caducada', 'Expired')], ['REJECTED', t('Rechazada', 'Rejected')], ['NOT_SENT', t('No enviada', 'Not sent')], ['UNKNOWN', t('En duda', 'Unknown')],
 ]);
-const LAYERS: ReadonlyMap<string, string> = new Map([['risk', 'Control de riesgo'], ['execution', 'Ejecución'], ['capguard', 'Tope de capital'], ['exchange', 'Exchange']]);
-const DECISIONS: ReadonlyMap<string, string> = new Map([['REJECTED', 'Rechazada'], ['REDUCED', 'Reducida'], ['APPROVED', 'Aprobada']]);
-const ACTIONS: ReadonlyMap<string, string> = new Map([['hold', 'esperar'], ['enter', 'entrar'], ['exit', 'salir']]);
-const LEVELS: Readonly<Record<AlertLevel, { readonly text: string; readonly tone: 'bad' | 'warn' | 'off' }>> = {
-  CRITICAL: { text: 'Crítica', tone: 'bad' }, WARNING: { text: 'Aviso', tone: 'warn' }, INFO: { text: 'Info', tone: 'off' },
-};
+const layers = (): ReadonlyMap<string, string> => new Map([['risk', t('Control de riesgo', 'Risk control')], ['execution', t('Ejecución', 'Execution')], ['capguard', t('Tope de capital', 'Capital guard')], ['exchange', 'Exchange']]);
+const decisions = (): ReadonlyMap<string, string> => new Map([['REJECTED', t('Rechazada', 'Rejected')], ['REDUCED', t('Reducida', 'Reduced')], ['APPROVED', t('Aprobada', 'Approved')]]);
+const actions = (): ReadonlyMap<string, string> => new Map([['hold', t('esperar', 'hold')], ['enter', t('entrar', 'enter')], ['exit', t('salir', 'exit')], ['buy', t('comprar', 'buy')], ['sell', t('vender', 'sell')]]);
+const levels = (): Readonly<Record<AlertLevel, { readonly text: string; readonly tone: 'bad' | 'warn' | 'off' }>> => ({
+  CRITICAL: { text: t('Crítica', 'Critical'), tone: 'bad' }, WARNING: { text: t('Aviso', 'Warning'), tone: 'warn' }, INFO: { text: 'Info', tone: 'off' },
+});
 
 // ---- Resumen ----
 
@@ -236,17 +244,23 @@ function returns(s: DashboardSnapshot): Returns {
 function sentence(s: DashboardSnapshot, r: Returns): string {
   const first = s.curve.at[0];
   const last = s.curve.at.at(-1);
-  if (first === undefined || last === undefined) return 'Aún no hay datos suficientes para resumir el periodo: el sistema no ha evaluado ninguna vela.';
+  if (first === undefined || last === undefined) return t('Aún no hay datos suficientes para resumir el periodo: el sistema no ha evaluado ninguna vela.', 'Not enough data to summarise the period yet: the system has not evaluated any candle.');
+  const dd = floatPercent(Decimal.parse(s.account.maxDrawdown).toAnalysis());
+  if (lang() === 'en') {
+    const verb = Math.abs(r.system) < 0.0005 ? 'stayed flat' : r.system > 0 ? `gained ${floatPercent(r.system)}` : `lost ${floatPercent(-r.system)}`;
+    const versus = r.bench === null ? '' : `, against ${floatPercent(r.bench)} for buying and holding ${r.benchName}`;
+    return `From ${day(first)} to ${day(last)}, the system ${verb}${versus}, with a maximum drawdown of ${dd}.`;
+  }
   const verb = Math.abs(r.system) < 0.0005 ? 'se ha quedado igual' : r.system > 0 ? `ha ganado un ${floatPercent(r.system)}` : `ha perdido un ${floatPercent(-r.system)}`;
   const versus = r.bench === null ? '' : `, frente al ${floatPercent(r.bench)} de comprar y mantener ${r.benchName}`;
-  return `Del ${day(first)} al ${day(last)}, el sistema ${verb}${versus}, con una caída máxima del ${floatPercent(Decimal.parse(s.account.maxDrawdown).toAnalysis())}.`;
+  return `Del ${day(first)} al ${day(last)}, el sistema ${verb}${versus}, con una caída máxima del ${dd}.`;
 }
 
 function attentionBlock(s: DashboardSnapshot): string {
-  if (s.attention.length === 0) return `<div class="status" role="status">${status('ok', 'Todo en orden')}</div>`;
+  if (s.attention.length === 0) return `<div class="status" role="status">${status('ok', t('Todo en orden', 'All clear'))}</div>`;
   const critical = s.attention.some((a) => a.level === 'CRITICAL');
   const items = s.attention.map((a) => `<li>${e(a.message.charAt(0).toUpperCase() + a.message.slice(1))}</li>`).join('');
-  return `<div class="status" role="status">${status(critical ? 'bad' : 'warn', 'Requiere atención')}<ul>${items}</ul></div>`;
+  return `<div class="status" role="status">${status(critical ? 'bad' : 'warn', t('Requiere atención', 'Needs attention'))}<ul>${items}</ul></div>`;
 }
 
 function summary(s: DashboardSnapshot, r: Returns): string {
@@ -254,25 +268,25 @@ function summary(s: DashboardSnapshot, r: Returns): string {
   const q = s.quoteCurrency;
   const diff = r.bench === null ? null : (r.system - r.bench) * 100;
   const versus = diff === null
-    ? kpi(`Frente a ${r.benchName}`, '—', e(s.curve.benchmarkNote ?? ''))
-    : kpi(`Frente a ${r.benchName}`, delta(Math.abs(diff) < 0.005 ? 0 : Math.sign(diff), `${float(Math.abs(diff), 2)}${NBSP}<i>puntos</i>`),
-      e(`${r.benchName} comprado y sin tocar: ${floatPercent(r.bench ?? 0, 2)}`));
+    ? kpi(`${t('Frente a', 'Against')} ${r.benchName}`, '—', e(s.curve.benchmarkNote ?? ''))
+    : kpi(`${t('Frente a', 'Against')} ${r.benchName}`, delta(Math.abs(diff) < 0.005 ? 0 : Math.sign(diff), `${float(Math.abs(diff), 2)}${NBSP}<i>${t('puntos', 'points')}</i>`),
+      e(`${r.benchName} ${t('comprado y sin tocar', 'bought and held')}: ${floatPercent(r.bench ?? 0, 2)}`));
   return `<section class="card wide">
 <p class="sentence">${e(sentence(s, r))}</p>
 ${attentionBlock(s)}
 <div class="kpis">
-${kpi('Patrimonio', withCurrency(money(a.equity), q), e(`Empezó con ${money(a.startingCash)}${NBSP}${q}`))}
-${kpi('Resultado', delta(decimalSign(a.pnl), withCurrency(money(a.pnl), q)), e(percent(a.pnlFraction)))}
+${kpi(t('Patrimonio', 'Equity'), withCurrency(money(a.equity), q), e(`${t('Empezó con', 'Started with')} ${money(a.startingCash)}${NBSP}${q}`))}
+${kpi(t('Resultado', 'Result'), delta(decimalSign(a.pnl), withCurrency(money(a.pnl), q)), e(percent(a.pnlFraction)))}
 ${versus}
-${kpi('Caída máxima', percent(a.maxDrawdown), e(`La peor bajada desde un máximo. Ahora: ${percent(a.drawdown)}`), 'drawdown')}
+${kpi(t('Caída máxima', 'Max drawdown'), percent(a.maxDrawdown), e(`${t('La peor bajada desde un máximo. Ahora', 'The worst fall from a peak. Now')}: ${percent(a.drawdown)}`), 'drawdown')}
 </div></section>`;
 }
 
 function evolution(s: DashboardSnapshot, r: Returns): string {
   const { at, equity, benchmark } = s.curve;
-  const title = `Evolución frente a comprar y mantener ${r.benchName}`;
-  const lede = 'Las dos líneas parten de 100. Si la del sistema queda por encima, le va mejor que comprar y no tocar nada. Valorado al cierre de cada vela, sin los costes de vender.';
-  if (equity.length < 2) return `<section class="card wide">${head(title, lede)}<p class="note">Aún no hay curva: el sistema no ha evaluado dos velas.</p></section>`;
+  const title = t(`Evolución frente a comprar y mantener ${r.benchName}`, `Equity against buying and holding ${r.benchName}`);
+  const lede = t('Las dos líneas parten de 100. Si la del sistema queda por encima, le va mejor que comprar y no tocar nada. Valorado al cierre de cada vela, sin los costes de vender.', 'Both lines start at 100. If the system line ends higher, it did better than buying and doing nothing. Valued at each candle close, before selling costs.');
+  if (equity.length < 2) return `<section class="card wide">${head(title, lede)}<p class="note">${t('Aún no hay curva: el sistema no ha evaluado dos velas.', 'No curve yet: the system has not evaluated two candles.')}</p></section>`;
   const start = Decimal.parse(s.account.startingCash).toAnalysis();
   const system = equity.map((v) => (v / start) * 100);
   const bench = benchmark === null ? null : benchmark.map((v) => (v / start) * 100);
@@ -285,21 +299,21 @@ function evolution(s: DashboardSnapshot, r: Returns): string {
   const worst = drawdown.reduce((low, v, i) => (v < (drawdown[low] ?? 0) ? i : low), 0);
   const worstValue = drawdown[worst] ?? 0;
   const worstWhen = at[worst];
-  const legend = `<p class="legend"><span><span class="key"></span>Sistema</span>${bench === null ? `<span>${e(`Sin comprar y mantener: ${s.curve.benchmarkNote ?? ''}`)}</span>` : `<span><span class="key bench"></span>${e(`Comprar y mantener ${r.benchName}, con el coste de la compra`)}</span>`}</p>`;
+  const legend = `<p class="legend"><span><span class="key"></span>${t('Sistema', 'System')}</span>${bench === null ? `<span>${e(`${t('Sin comprar y mantener', 'No buy-and-hold')}: ${s.curve.benchmarkNote ?? ''}`)}</span>` : `<span><span class="key bench"></span>${e(t(`Comprar y mantener ${r.benchName}, con el coste de la compra`, `Buy and hold ${r.benchName}, with the cost of buying`))}</span>`}</p>`;
   return `<section class="card wide">${head(title, lede)}
 ${legend}
 <div class="chart">${MAIN_FRAMES.map((f) => mainChart(f, at, system, bench, r.benchName)).join('')}</div>
-<h3>Caída desde el máximo<span class="tech">drawdown</span></h3>
-<p class="lede">Cuánto está el patrimonio por debajo de su punto más alto. Es el peor momento que habría que aguantar.</p>
+<h3>${t('Caída desde el máximo', 'Drawdown from the peak')}<span class="tech">drawdown</span></h3>
+<p class="lede">${t('Cuánto está el patrimonio por debajo de su punto más alto. Es el peor momento que habría que aguantar.', 'How far equity is below its highest point: the worst moment you would have to sit through.')}</p>
 <div class="chart">${DRAWDOWN_FRAMES.map((f) => drawdownChart(f, at, drawdown)).join('')}</div>
-<p class="note">${worstValue < 0 && worstWhen !== undefined ? `Peor momento: ${e(`${float(worstValue, 2)}${NBSP}%`)} el ${when(worstWhen)}.` : 'Sin caídas: el patrimonio no ha bajado de su máximo.'}</p>
+<p class="note">${worstValue < 0 && worstWhen !== undefined ? `${t('Peor momento', 'Worst moment')}: ${e(`${float(worstValue, 2)}${NBSP}%`)} ${t('el', 'on')} ${when(worstWhen)}.` : t('Sin caídas: el patrimonio no ha bajado de su máximo.', 'No drawdown: equity never fell below its peak.')}</p>
 </section>`;
 }
 
 function researchSummary(research: ResearchSnapshot | null): string {
   if (research === null) return '';
   const figures = researchBrief(research).map((row) => kpi(row.label, e(row.value))).join('');
-  return `<section class="card wide">${head('Investigación', 'El registro de experimentos en cuatro cifras. La N global cuenta todas las pruebas hechas, también las que fallaron.', 'Experiment Registry')}
+  return `<section class="card wide">${head(t('Investigación', 'Research'), t('El registro de experimentos en cuatro cifras. La N global cuenta todas las pruebas hechas, también las que fallaron.', 'The experiment registry in four figures. The global N counts every test run, including the ones that failed.'), 'Experiment Registry')}
 <div class="kpis">${figures}</div></section>`;
 }
 
@@ -307,23 +321,23 @@ function researchSummary(research: ResearchSnapshot | null): string {
 
 function health(s: DashboardSnapshot): string {
   const h = s.health;
-  const trading = h.trading === 'operando' ? status('ok', 'operando') : h.trading === 'detenido' ? status('bad', 'detenido') : status('warn', 'sin empezar');
-  const reconciliation = h.reconciliation.lastResolved === null ? status('warn', 'sin comprobar') : h.reconciliation.lastResolved ? status('ok', 'cuadran') : status('bad', 'no cuadran');
+  const trading = h.trading === 'operando' ? status('ok', t('operando', 'running')) : h.trading === 'detenido' ? status('bad', t('detenido', 'halted')) : status('warn', t('sin empezar', 'not started'));
+  const reconciliation = h.reconciliation.lastResolved === null ? status('warn', t('sin comprobar', 'not checked')) : h.reconciliation.lastResolved ? status('ok', t('cuadran', 'match')) : status('bad', t('no cuadran', 'mismatch'));
   const feeds = h.feeds.map((f) => [
-    e(f.symbol), f.stale ? status('warn', 'con retraso') : status('ok', 'al día'), when(f.lastCloseAt), String(f.candles),
+    e(f.symbol), f.stale ? status('warn', t('con retraso', 'late')) : status('ok', t('al día', 'up to date')), when(f.lastCloseAt), String(f.candles),
     f.gaps > 0 ? status('warn', String(f.gaps)) : '0', String(f.discarded),
   ]);
-  return `<section class="card">${head('Salud del sistema', 'Si funciona, si los datos llegan a tiempo y si sus cuentas cuadran con el exchange.')}
+  return `<section class="card">${head(t('Salud del sistema', 'System health'), t('Si funciona, si los datos llegan a tiempo y si sus cuentas cuadran con el exchange.', 'Whether it runs, whether data arrives on time and whether its books match the exchange.'))}
 <div class="kpis">
-${kpi('Estado', trading, e(h.haltedReason ?? ''))}
-${kpi('Freno de emergencia', h.killSwitch ? status('bad', 'activado') : status('ok', 'inactivo'), 'Solo se ve: se acciona fuera de esta página', 'kill switch')}
-${kpi('Envío de órdenes', h.executionMode === 'NORMAL' ? status('ok', 'normal') : status('bad', h.executionMode), '', 'execution')}
-${kpi('Cuentas', reconciliation, `${e(String(h.reconciliation.count))} ${h.reconciliation.count === 1 ? 'comprobación' : 'comprobaciones'} · última ${when(h.reconciliation.lastAt)}`, 'reconciliación')}
+${kpi(t('Estado', 'Status'), trading, e(h.haltedReason ?? ''))}
+${kpi(t('Freno de emergencia', 'Emergency brake'), h.killSwitch ? status('bad', t('activado', 'on')) : status('ok', t('inactivo', 'off')), t('Solo se ve: se acciona fuera de esta página', 'Display only: it is operated outside this page'), 'kill switch')}
+${kpi(t('Envío de órdenes', 'Order sending'), h.executionMode === 'NORMAL' ? status('ok', 'normal') : status('bad', h.executionMode), '', 'execution')}
+${kpi(t('Cuentas', 'Books'), reconciliation, `${e(String(h.reconciliation.count))} ${h.reconciliation.count === 1 ? t('comprobación', 'check') : t('comprobaciones', 'checks')} · ${t('última', 'last')} ${when(h.reconciliation.lastAt)}`, t('reconciliación', 'reconciliation'))}
 </div>
-<h3>Datos de mercado<span class="tech">feeds</span></h3>
-<p class="lede">Las velas de cada par: si la última llegó a tiempo y si faltó alguna.</p>
-<div class="only-lg">${table([{ label: 'Par', key: true }, { label: 'Estado', key: true }, { label: 'Último cierre' }, { label: 'Velas', num: true }, { label: 'Huecos', num: true, tech: 'gaps' }, { label: 'Descartadas', num: true }], feeds, 'Sin datos de mercado en el diario.')}</div>
-${compactLines(h.feeds.map((f) => [whenShort(f.lastCloseAt), e(f.symbol), f.stale ? status('warn', 'con retraso') : status('ok', 'al día'), `<span class="num">${e(f.gaps === 1 ? '1 hueco' : `${String(f.gaps)} huecos`)}</span>`]), 'Sin datos de mercado en el diario.')}
+<h3>${t('Datos de mercado', 'Market data')}<span class="tech">feeds</span></h3>
+<p class="lede">${t('Las velas de cada par: si la última llegó a tiempo y si faltó alguna.', 'The candles of each pair: whether the last one arrived on time and whether any were missing.')}</p>
+<div class="only-lg">${table([{ label: t('Par', 'Pair'), key: true }, { label: t('Estado', 'Status'), key: true }, { label: t('Último cierre', 'Last close') }, { label: t('Velas', 'Candles'), num: true }, { label: t('Huecos', 'Gaps'), num: true, tech: 'gaps' }, { label: t('Descartadas', 'Discarded'), num: true }], feeds, t('Sin datos de mercado en el diario.', 'No market data in the journal.'))}</div>
+${compactLines(h.feeds.map((f) => [whenShort(f.lastCloseAt), e(f.symbol), f.stale ? status('warn', t('con retraso', 'late')) : status('ok', t('al día', 'up to date')), `<span class="num">${e(f.gaps === 1 ? t('1 hueco', '1 gap') : `${String(f.gaps)} ${t('huecos', 'gaps')}`)}</span>`]), t('Sin datos de mercado en el diario.', 'No market data in the journal.'))}
 </section>`;
 }
 
@@ -338,12 +352,12 @@ function whenShort(at: UtcMillis | null): string {
 function capital(s: DashboardSnapshot): string {
   const a = s.account;
   const q = s.quoteCurrency;
-  return `<section class="card">${head('Capital', 'Dónde está el dinero: en efectivo o invertido, lo ganado en operaciones cerradas y lo pagado en comisiones.')}
+  return `<section class="card">${head('Capital', t('Dónde está el dinero: en efectivo o invertido, lo ganado en operaciones cerradas y lo pagado en comisiones.', 'Where the money is: cash or invested, what closed trades made and what was paid in fees.'))}
 <div class="kpis">
-${kpi('Efectivo', withCurrency(money(a.cash), q), '', 'liquidez')}
-${kpi('Invertido', withCurrency(money(a.exposure), q), e(`${percent(a.exposureFraction)} del patrimonio`), 'exposición')}
-${kpi('Ganado en ventas', delta(decimalSign(a.realizedPnl), withCurrency(money(a.realizedPnl), q)), 'Operaciones ya cerradas', 'P&L realizado')}
-${kpi('Comisiones pagadas', withCurrency(money(a.fees), q))}
+${kpi(t('Efectivo', 'Cash'), withCurrency(money(a.cash), q), '', t('liquidez', 'liquidity'))}
+${kpi(t('Invertido', 'Invested'), withCurrency(money(a.exposure), q), e(`${percent(a.exposureFraction)} ${t('del patrimonio', 'of equity')}`), t('exposición', 'exposure'))}
+${kpi(t('Ganado en ventas', 'Realised from sales'), delta(decimalSign(a.realizedPnl), withCurrency(money(a.realizedPnl), q)), t('Operaciones ya cerradas', 'Closed trades'), t('P&L realizado', 'realised P&L'))}
+${kpi(t('Comisiones pagadas', 'Fees paid'), withCurrency(money(a.fees), q))}
 </div></section>`;
 }
 
@@ -351,61 +365,68 @@ function positionsAndOrders(s: DashboardSnapshot): string {
   const q = s.quoteCurrency;
   const positions = s.positions.map((p) => [
     e(p.symbol), amount(p.quantity), money(p.averageEntry), money(p.lastClose), money(p.value), delta(decimalSign(p.unrealizedPnl), money(p.unrealizedPnl)),
-    p.protectiveStop === null ? status('warn', 'sin stop') : `${status('ok', 'activo')} ${money(p.protectiveStop)}`,
+    p.protectiveStop === null ? status('warn', t('sin stop', 'no stop')) : `${status('ok', t('activo', 'active'))} ${money(p.protectiveStop)}`,
   ]);
   const orders = s.orders.open.map((o) => [
-    e(o.symbol), plain(SIDES, o.side), plain(ORDER_TYPES, o.type), plain(KINDS, o.kind), plain(ORDER_STATES, o.state), o.quantity === null ? '?' : amount(o.quantity),
+    e(o.symbol), plain(sides(), o.side), plain(orderTypes(), o.type), plain(kinds(), o.kind), plain(orderStates(), o.state), o.quantity === null ? '?' : amount(o.quantity),
     amount(o.filled), o.triggerPrice === null ? '—' : money(o.triggerPrice), when(o.updatedAt),
   ]);
-  const states = Object.entries(s.orders.byState).sort(([a], [b]) => (a < b ? -1 : 1)).map(([state, n]) => `${ORDER_STATES.get(state) ?? state}: ${String(n)}`).join(' · ');
-  return `<section class="card wide">${head('Posiciones', 'Lo que el sistema tiene comprado ahora y cuánto ganaría o perdería si lo vendiera al último precio.')}
-${table([{ label: 'Par', key: true }, { label: 'Cantidad', num: true }, { label: 'Precio medio', num: true, tech: 'entrada media, con comisiones' }, { label: 'Último precio', num: true }, { label: `Valor (${q})`, num: true }, { label: 'Ganancia sin cerrar', num: true, tech: 'P&L no realizado', key: true }, { label: 'Stop de protección', num: true, tech: 'stop que ya espera en el exchange', key: true }], positions, 'Sin posiciones abiertas.', { compact: true })}
-<p class="note">Valor al último cierre del diario, sin los costes de vender. El stop de protección vende solo si el precio cae hasta él; sin él, una caída no tiene freno.</p></section>
-<section class="card wide">${head('Órdenes abiertas', 'Órdenes enviadas que aún no se han ejecutado del todo ni cancelado.')}
-${table([{ label: 'Par', key: true }, { label: 'Lado', key: true }, { label: 'Tipo' }, { label: 'Para' }, { label: 'Estado', key: true }, { label: 'Cantidad', num: true }, { label: 'Ejecutada', num: true }, { label: 'Disparo', num: true, tech: 'trigger', key: true }, { label: 'Actualizada' }], orders, 'Ninguna orden abierta.', { compact: true })}
-<p class="note">${e(states === '' ? 'Sin órdenes en el diario.' : `Todas las órdenes del periodo: ${states}.`)}</p></section>`;
+  const states = Object.entries(s.orders.byState).sort(([a], [b]) => (a < b ? -1 : 1)).map(([state, n]) => `${orderStates().get(state) ?? state}: ${String(n)}`).join(' · ');
+  return `<section class="card wide">${head(t('Posiciones', 'Positions'), t('Lo que el sistema tiene comprado ahora y cuánto ganaría o perdería si lo vendiera al último precio.', 'What the system holds now and what it would gain or lose selling at the last price.'))}
+${table([{ label: t('Par', 'Pair'), key: true }, { label: t('Cantidad', 'Quantity'), num: true }, { label: t('Precio medio', 'Average price'), num: true, tech: t('entrada media, con comisiones', 'average entry, with fees') }, { label: t('Último precio', 'Last price'), num: true }, { label: `${t('Valor', 'Value')} (${q})`, num: true }, { label: t('Ganancia sin cerrar', 'Open gain'), num: true, tech: t('P&L no realizado', 'unrealised P&L'), key: true }, { label: t('Stop de protección', 'Protective stop'), num: true, tech: t('stop que ya espera en el exchange', 'stop already resting on the exchange'), key: true }], positions, t('Sin posiciones abiertas.', 'No open positions.'), { compact: true })}
+<p class="note">${t('Valor al último cierre del diario, sin los costes de vender. El stop de protección vende solo si el precio cae hasta él; sin él, una caída no tiene freno.', 'Value at the last close in the journal, before selling costs. The protective stop sells only if the price falls to it; without it, a fall has no brake.')}</p></section>
+<section class="card wide">${head(t('Órdenes abiertas', 'Open orders'), t('Órdenes enviadas que aún no se han ejecutado del todo ni cancelado.', 'Orders sent that are not yet fully filled or cancelled.'))}
+${table([{ label: t('Par', 'Pair'), key: true }, { label: t('Lado', 'Side'), key: true }, { label: t('Tipo', 'Type') }, { label: t('Para', 'Purpose') }, { label: t('Estado', 'Status'), key: true }, { label: t('Cantidad', 'Quantity'), num: true }, { label: t('Ejecutada', 'Filled'), num: true }, { label: t('Disparo', 'Trigger'), num: true, tech: 'trigger', key: true }, { label: t('Actualizada', 'Updated') }], orders, t('Ninguna orden abierta.', 'No open orders.'), { compact: true })}
+<p class="note">${e(states === '' ? t('Sin órdenes en el diario.', 'No orders in the journal.') : `${t('Todas las órdenes del periodo', 'All orders in the period')}: ${states}.`)}</p></section>`;
 }
 
 function activity(s: DashboardSnapshot): string {
   const trades = s.trades.map((t) => [
-    when(t.at), e(t.symbol), plain(SIDES, t.side), plain(KINDS, t.kind), amount(t.quantity), money(t.price), money(t.notional), money(t.fee), { long: e(t.reason) },
+    when(t.at), e(t.symbol), plain(sides(), t.side), plain(kinds(), t.kind), amount(t.quantity), money(t.price), money(t.notional), money(t.fee), { long: e(phrase(t.reason)) },
   ]);
   const rejections = s.rejections.map((r) => [
-    when(r.at), plain(LAYERS, r.layer), plain(DECISIONS, r.decision), `<span class="mono">${e(r.reasonCode)}</span>`, e(r.symbol ?? '—'), r.side === null ? '—' : plain(SIDES, r.side),
-    r.kind === null ? '—' : plain(KINDS, r.kind), { long: `<span class="mono">${e(r.reasonCodes.join(', '))}</span>` },
+    when(r.at), plain(layers(), r.layer), plain(decisions(), r.decision), `<span class="mono">${e(r.reasonCode)}</span>`, e(r.symbol ?? '—'), r.side === null ? '—' : plain(sides(), r.side),
+    r.kind === null ? '—' : plain(kinds(), r.kind), { long: `<span class="mono">${e(r.reasonCodes.join(', '))}</span>` },
   ]);
-  const shown = (n: number, total: number): string => (total > n ? ` Se muestran las ${String(n)} más recientes de ${String(total)}.` : '');
-  return `<section class="card wide">${head('Operaciones', 'Compras y ventas ejecutadas, las más recientes primero, con su motivo y su comisión.')}
-<div class="only-lg">${table([{ label: 'Fecha', key: true }, { label: 'Par', key: true }, { label: 'Lado', key: true }, { label: 'Para' }, { label: 'Cantidad', num: true }, { label: 'Precio', num: true }, { label: `Importe (${s.quoteCurrency})`, num: true, key: true }, { label: 'Comisión', num: true }, { label: 'Motivo' }], trades, 'Ninguna operación todavía.')}</div>
-${compactLines(s.trades.map((t) => [whenShort(t.at), e(t.symbol), plain(SIDES, t.side), `<span class="num">${withCurrency(money(t.notional), s.quoteCurrency)}</span>`]), 'Ninguna operación todavía.')}
-<p class="note">${e(`La comisión es el coste explícito; el spread y el deslizamiento (slippage) ya van en el precio.${shown(s.trades.length, s.tradesTotal)}`)}</p></section>
-<section class="card wide">${head('Órdenes frenadas por el control de riesgo', 'Órdenes que el control de riesgo rechazó o redujo antes de enviarse, con su motivo. Así se ve que los límites actúan.')}
-${table([{ label: 'Fecha', key: true }, { label: 'Quién' }, { label: 'Decisión', key: true }, { label: 'Motivo', tech: 'reason_code', key: true }, { label: 'Par' }, { label: 'Lado' }, { label: 'Para' }, { label: 'Todos los motivos', tech: 'reason_codes' }], rejections, 'Ninguna orden frenada.')}
-<p class="note">${e(`El motivo es un código fijo del catálogo de riesgo (reason_code).${shown(s.rejections.length, s.rejectionsTotal)}`)}</p></section>`;
+  const shown = (n: number, total: number): string => (total > n ? t(` Se muestran las ${String(n)} más recientes de ${String(total)}.`, ` Showing the ${String(n)} most recent of ${String(total)}.`) : '');
+  return `<section class="card wide">${head(t('Operaciones', 'Trades'), t('Compras y ventas ejecutadas, las más recientes primero, con su motivo y su comisión.', 'Filled buys and sells, most recent first, with their reason and fee.'))}
+<div class="only-lg">${table([{ label: t('Fecha', 'Date'), key: true }, { label: t('Par', 'Pair'), key: true }, { label: t('Lado', 'Side'), key: true }, { label: t('Para', 'Purpose') }, { label: t('Cantidad', 'Quantity'), num: true }, { label: t('Precio', 'Price'), num: true }, { label: `${t('Importe', 'Amount')} (${s.quoteCurrency})`, num: true, key: true }, { label: t('Comisión', 'Fee'), num: true }, { label: t('Motivo', 'Reason') }], trades, t('Ninguna operación todavía.', 'No trades yet.'))}</div>
+${compactLines(s.trades.map((tr) => [whenShort(tr.at), e(tr.symbol), plain(sides(), tr.side), `<span class="num">${withCurrency(money(tr.notional), s.quoteCurrency)}</span>`]), t('Ninguna operación todavía.', 'No trades yet.'))}
+<p class="note">${e(`${t('La comisión es el coste explícito; el spread y el deslizamiento (slippage) ya van en el precio.', 'The fee is the explicit cost; spread and slippage are already in the price.')}${shown(s.trades.length, s.tradesTotal)}`)}</p></section>
+<section class="card wide">${head(t('Órdenes frenadas por el control de riesgo', 'Orders stopped by the risk control'), t('Órdenes que el control de riesgo rechazó o redujo antes de enviarse, con su motivo. Así se ve que los límites actúan.', 'Orders the risk control rejected or reduced before they were sent, with the reason. This is how you see the limits at work.'))}
+${table([{ label: t('Fecha', 'Date'), key: true }, { label: t('Quién', 'Who') }, { label: t('Decisión', 'Decision'), key: true }, { label: t('Motivo', 'Reason'), tech: 'reason_code', key: true }, { label: t('Par', 'Pair') }, { label: t('Lado', 'Side') }, { label: t('Para', 'Purpose') }, { label: t('Todos los motivos', 'All reasons'), tech: 'reason_codes' }], rejections, t('Ninguna orden frenada.', 'No orders stopped.'))}
+<p class="note">${e(`${t('El motivo es un código fijo del catálogo de riesgo (reason_code).', 'The reason is a fixed code from the risk catalogue (reason_code).')}${shown(s.rejections.length, s.rejectionsTotal)}`)}</p></section>`;
 }
 
 function strategiesAndAlerts(s: DashboardSnapshot): string {
   const strategies = s.strategies.map((st) => {
     const params = Object.entries(st.params).map(([k, v]) => `${k} = ${String(v)}`).join(', ');
-    const last = st.last.map((l) => `${e(l.symbol)}: ${l.action === null ? 'sin acción' : plain(ACTIONS, l.action)} <span class="tech">${e(l.reason ?? 'sin motivo')}</span>`).join('<br>');
+    const last = st.last.map((l) => `${e(l.symbol)}: ${l.action === null ? t('sin acción', 'no action') : plain(actions(), l.action)} <span class="tech">${e(l.reason === null ? t('sin motivo', 'no reason') : phrase(l.reason))}</span>`).join('<br>');
     return [
-      `<span class="mono">${e(`${st.id}@${st.version}`)}</span>`, st.state === 'activa' ? status('ok', 'activa') : status('bad', 'detenida'),
+      `<span class="mono">${e(`${st.id}@${st.version}`)}</span>`, st.state === 'activa' ? status('ok', t('activa', 'active')) : status('bad', t('detenida', 'halted')),
       { long: `<span class="mono">${e(params)}</span>` }, String(st.evaluations), String(st.intents), { long: last },
     ];
   });
-  const alerts = s.alerts.map((a) => [when(a.at), status(LEVELS[a.level].tone, LEVELS[a.level].text), { long: e(a.message) }]);
-  const counts = (['CRITICAL', 'WARNING', 'INFO'] as const satisfies readonly AlertLevel[]).map((level) => `${LEVELS[level].text}: ${String(s.alertCounts[level])}`).join(' · ');
-  return `<section class="card wide">${head('Estrategias', 'Las reglas que deciden comprar o vender, con qué parámetros y qué decidieron la última vez en cada par.')}
-${table([{ label: 'Estrategia', key: true }, { label: 'Estado', key: true }, { label: 'Parámetros' }, { label: 'Evaluaciones', num: true }, { label: 'Intenciones', num: true, tech: 'órdenes propuestas a Risk' }, { label: 'Última decisión por par' }], strategies, 'Ninguna estrategia.')}</section>
-<section class="card wide">${head('Alertas recientes', 'Avisos que salen solos de lo ocurrido, con una tabla fija de reglas. Las más recientes primero.')}
-${table([{ label: 'Fecha', key: true }, { label: 'Nivel', key: true }, { label: 'Mensaje' }], alerts, 'Ninguna alerta.')}
-<p class="note">${e(`En total: ${counts}.`)}</p></section>`;
+  const lv = levels();
+  const alerts = s.alerts.map((a) => [when(a.at), status(lv[a.level].tone, lv[a.level].text), { long: e(a.message) }]);
+  const counts = (['CRITICAL', 'WARNING', 'INFO'] as const satisfies readonly AlertLevel[]).map((level) => `${lv[level].text}: ${String(s.alertCounts[level])}`).join(' · ');
+  return `<section class="card wide">${head(t('Estrategias', 'Strategies'), t('Las reglas que deciden comprar o vender, con qué parámetros y qué decidieron la última vez en cada par.', 'The rules that decide to buy or sell, their parameters and their last decision on each pair.'))}
+${table([{ label: t('Estrategia', 'Strategy'), key: true }, { label: t('Estado', 'Status'), key: true }, { label: t('Parámetros', 'Parameters') }, { label: t('Evaluaciones', 'Evaluations'), num: true }, { label: t('Intenciones', 'Intents'), num: true, tech: t('órdenes propuestas a Risk', 'orders proposed to Risk') }, { label: t('Última decisión por par', 'Last decision per pair') }], strategies, t('Ninguna estrategia.', 'No strategy.'))}</section>
+<section class="card wide">${head(t('Alertas recientes', 'Recent alerts'), t('Avisos que salen solos de lo ocurrido, con una tabla fija de reglas. Las más recientes primero.', 'Warnings raised automatically from what happened, with a fixed rule table. Most recent first.'))}
+${table([{ label: t('Fecha', 'Date'), key: true }, { label: t('Nivel', 'Level'), key: true }, { label: t('Mensaje', 'Message') }], alerts, t('Ninguna alerta.', 'No alerts.'))}
+<p class="note">${e(`${t('En total', 'In total')}: ${counts}.`)}</p></section>`;
 }
 
-function planB(s: DashboardSnapshot): string {
-  const p = s.planB;
-  const q = s.quoteCurrency;
-  if (!p.hasTarget) return `<section class="card wide"><h2>Plan B</h2><p class="lede">${e('Sin reparto objetivo todavía: lo fija la persona en los pasos 49 a 52. El proyecto no lo decide ni lo recomienda.')}</p></section>`;
+/**
+ * La tarjeta del plan B. Con `source` (la demo pública), sus cifras salen del replay del bot de plan B y no del diario de
+ * la estrategia; sin reparto objetivo, un estado vacío que explica por qué.
+ */
+function planB(page: DashboardPage, s: DashboardSnapshot): string {
+  const source = page.planB ?? s;
+  const p = source.planB;
+  const q = source.quoteCurrency;
+  const link = page.planBLink === undefined ? '' : ` <a href="${e(page.planBLink)}">${t('Ver el replay completo del bot de plan B', 'See the full replay of the plan B bot')}</a>`;
+  if (!p.hasTarget) return `<section class="card wide"><h2>Plan B</h2><p class="lede">${e(t('Este diario no tiene reparto objetivo: es el de una estrategia, no el del bot de plan B (compras periódicas y rebalanceo). El proyecto no fija ni recomienda ningún reparto.', 'This journal has no target allocation: it belongs to a strategy, not to the plan B bot (regular purchases and rebalancing). The project does not set or recommend any allocation.'))}${link}</p></section>`;
   const width = 200;
   const rows = p.allocation.map((row) => {
     const bar = (fractionText: string | null, cls: string, y: number): string => {
@@ -413,21 +434,23 @@ function planB(s: DashboardSnapshot): string {
       const share = Math.min(Math.max(Decimal.parse(fractionText).toAnalysis(), 0), 1);
       return `<rect class="${cls}" x="0" y="${String(y)}" width="${(share * width).toFixed(1)}" height="5" rx="1"/>`;
     };
-    const svg = `<svg viewBox="0 0 ${String(width)} 14" width="120" height="9" role="img" aria-label="Reparto de ${e(row.asset)}">${bar(row.current, 'bars-cur', 0)}${bar(row.target, 'bars-tgt', 8)}</svg>`;
+    const svg = `<svg viewBox="0 0 ${String(width)} 14" width="120" height="9" role="img" aria-label="${t('Reparto de', 'Allocation of')} ${e(row.asset)}">${bar(row.current, 'bars-cur', 0)}${bar(row.target, 'bars-tgt', 8)}</svg>`;
     return [
       e(row.asset), money(row.value), percent(row.current), row.target === null ? '—' : percent(row.target),
       row.deviation === null ? '—' : delta(decimalSign(row.deviation), percent(row.deviation)), svg,
     ];
   });
-  return `<section class="card wide">${head('Plan B', 'Lo aportado y el reparto actual frente al objetivo, cuando la persona lo fije.')}
+  const origin = page.planB === undefined ? '' : `<p class="note">${e(t(`Del replay del bot de plan B con datos sintéticos (${source.label}).`, `From the plan B bot replay on synthetic data (${source.label}).`))}${link}</p>`;
+  return `<section class="card wide">${head('Plan B', t('Lo aportado y el reparto actual frente al objetivo.', 'Money put in and the current allocation against the target.'))}
+${origin}
 <div class="kpis">
-${kpi('Aportado', withCurrency(money(p.contributions), q), e(p.contributionsNote))}
-${kpi('Próximo rebalanceo', p.nextRebalanceAt === null ? '—' : when(p.nextRebalanceAt), p.nextRebalanceAt === null ? 'Sin calendario: lo fija la persona en los pasos 49 a 52' : '')}
+${kpi(t('Aportado', 'Put in'), withCurrency(money(p.contributions), q), e(p.contributionsNote))}
+${kpi(t('Próximo rebalanceo', 'Next rebalance'), p.nextRebalanceAt === null ? '—' : when(p.nextRebalanceAt), p.nextRebalanceAt === null ? t('Sin calendario', 'No schedule') : '')}
 </div>
-<h3>Reparto actual frente al objetivo</h3>
-<p class="lede">Qué parte del patrimonio está en cada activo.</p>
-${table([{ label: 'Activo' }, { label: `Valor (${q})`, num: true }, { label: 'Actual', num: true }, { label: 'Objetivo', num: true }, { label: 'Desviación', num: true }, { label: 'Actual / objetivo' }], rows, 'Sin patrimonio.')}
-<p class="note">${e(p.hasTarget ? 'Barra en color: reparto actual. Barra gris: objetivo.' : 'Sin reparto objetivo: lo fija la persona en los pasos 49 a 52. El proyecto no lo decide ni lo recomienda.')}</p></section>`;
+<h3>${t('Reparto actual frente al objetivo', 'Current allocation against the target')}</h3>
+<p class="lede">${t('Qué parte del patrimonio está en cada activo.', 'Which share of equity is in each asset.')}</p>
+${table([{ label: t('Activo', 'Asset') }, { label: `${t('Valor', 'Value')} (${q})`, num: true }, { label: t('Actual', 'Current'), num: true }, { label: t('Objetivo', 'Target'), num: true }, { label: t('Desviación', 'Deviation'), num: true }, { label: t('Actual / objetivo', 'Current / target') }], rows, t('Sin patrimonio.', 'No equity.'))}
+<p class="note">${e(t('Barra en color: reparto actual. Barra gris: objetivo. El reparto es un ejemplo, no una recomendación.', 'Coloured bar: current allocation. Grey bar: target. The allocation is an example, not a recommendation.'))}</p></section>`;
 }
 
 // ---- Marco: barra superior, ticker, menú y pie ----
@@ -446,59 +469,81 @@ function tickerHtml(cls: string, items: readonly { readonly at: UtcMillis; reado
 }
 
 function replayEvents(s: DashboardSnapshot): { readonly at: UtcMillis; readonly text: string }[] {
-  const trades = s.trades.map((t) => ({ at: t.at, text: `${SIDES.get(t.side) ?? t.side} ${t.symbol} ${amount(t.quantity)} a ${money(t.price)} · ${KINDS.get(t.kind) ?? t.kind}` }));
-  const alerts = s.alerts.map((a) => ({ at: a.at, text: `${LEVELS[a.level].text}: ${a.message}` }));
+  const sd = sides();
+  const kd = kinds();
+  const lv = levels();
+  const trades = s.trades.map((tr) => ({ at: tr.at, text: `${sd.get(tr.side) ?? tr.side} ${tr.symbol} ${amount(tr.quantity)} ${t('a', 'at')} ${money(tr.price)} · ${kd.get(tr.kind) ?? tr.kind}` }));
+  const alerts = s.alerts.map((a) => ({ at: a.at, text: `${lv[a.level].text}: ${a.message}` }));
   return [...trades, ...alerts].sort((a, b) => b.at - a.at);
 }
 
 function topbar(page: DashboardPage): string {
   const s = page.snapshot;
-  const mode = MODES[s.mode];
+  const mode = modes()[s.mode];
   const m = madrid(s.asOf);
   const research = page.research;
   const stats = [
     research === null ? '' : `<span>N global <b>${e(String(research.globalN))}</b></span>`,
     page.commit === null ? '' : `<span class="sec">Commit <b>${e(page.commit)}</b></span>`,
-    `<span class="sec" title="${e(`Último evento del diario, hora de Madrid`)}">Diario <b>${e(`${m.day} ${m.month} ${m.time}`)}</b></span>`,
+    `<span class="sec" title="${e(t('Último evento del diario, hora de Madrid', 'Last journal event, Madrid time'))}">${t('Diario', 'Journal')} <b>${e(`${m.day} ${m.month} ${m.time}`)}</b></span>`,
     '<time id="reloj" hidden></time>',
   ].join('');
-  const replay = tickerHtml(`tk-replay${research === null ? '' : ' has-alt'}`, replayEvents(s), 'Últimos eventos del diario');
-  const registry = research === null ? '' : tickerHtml('tk-research', research.events, 'Últimos movimientos del registro');
+  const replay = tickerHtml(`tk-replay${research === null ? '' : ' has-alt'}`, replayEvents(s), t('Últimos eventos del diario', 'Latest journal events'));
+  const registry = research === null ? '' : tickerHtml('tk-research', research.events, t('Últimos movimientos del registro', 'Latest registry entries'));
   return `<header class="topbar">
 <div class="bar">
 <div class="brand">${sealSvg({ className: 'seal-top' })}<span>${e(PROJECT_NAME)}</span></div>
-<strong class="modetag" title="${e(mode.detail)}">MODO ${e(mode.title)}</strong>
+<strong class="modetag" title="${e(mode.detail)}">${t('MODO', 'MODE')} ${e(mode.title)}</strong>
 <span class="modedetail">${e(mode.detail)}</span>
-${s.synthetic ? '<span class="chip" title="Datos de demostración"><span class="md">DATOS DE DEMOSTRACIÓN</span><span class="xs">DEMO</span></span>' : ''}
-<div class="stats">${stats}</div>
+${s.synthetic ? `<span class="chip" title="${t('Datos de demostración', 'Demo data')}"><span class="md">${t('DATOS DE DEMOSTRACIÓN', 'DEMO DATA')}</span><span class="xs">DEMO</span></span>` : ''}
+<div class="stats">${stats}</div>${languageSwitch(page)}
 </div>
 ${replay}${registry}
 </header>`;
 }
 
-/** Solo en la demo: dos líneas para quien llega de fuera. El enlace a la metodología es provisional hasta el paso 49. */
-const INTRO = `<section class="intro"><p><strong>JP Quant</strong> es una consola personal de investigación cuantitativa en cripto: cada estrategia se registra antes de probarla y se juzga con criterios fijados de antemano. Todo lo que ves son <strong>datos sintéticos de demostración</strong>.</p>
-<p>Lee de arriba abajo: Resumen dice cómo va; en Investigación cada punto es un experimento; Criterios cuenta cuántos superan cada criterio y por qué fallan. <a href="#criterios">Metodología (provisional)</a></p></section>`;
+/**
+ * Solo con datos sintéticos: unas líneas para quien llega de fuera. Con registro, Investigación y Criterios son el registro
+ * real del estudio (paso 49: no lleva precios); el replay y el plan B son sintéticos.
+ */
+function intro(withResearch: boolean): string {
+  return t(
+    `<section class="intro"><p><strong>JP Quant</strong> es una consola de investigación cuantitativa en cripto: cada estrategia se registra antes de probarla y se juzga con criterios fijados de antemano. El replay y el plan B usan <strong>datos sintéticos de demostración</strong>${withResearch ? '; Investigación y Criterios muestran el <strong>registro real</strong> del estudio, en el que ninguna estrategia ha sido aprobada' : ''}.</p>
+<p>Lee de arriba abajo: Resumen dice cómo va el replay; en Investigación cada punto es un experimento; Criterios cuenta cuántos superan cada criterio y por qué fallan. Los datos sintéticos traen a propósito un hueco en ETH/EUR, para que se vea cómo lo detecta el sistema.</p></section>`,
+    `<section class="intro"><p><strong>JP Quant</strong> is a quantitative crypto research console: every strategy is registered before it is tested and judged against criteria fixed in advance. The replay and the plan B use <strong>synthetic demo data</strong>${withResearch ? '; Research and Criteria show the <strong>real registry</strong> of the study, in which no strategy has been approved' : ''}.</p>
+<p>Read from top to bottom: Overview shows how the replay is doing; in Research each dot is an experiment; Criteria counts how many pass each criterion and why they fail. The synthetic data has a deliberate gap in ETH/EUR, to show that the system detects it.</p></section>`,
+  );
+}
 
-const NAV = '<nav class="nav" aria-label="Vistas"><a href="#resumen">Resumen</a><a href="#investigacion">Investigación</a><a href="#replay">Replay</a><a href="#criterios">Criterios</a></nav>';
+function nav(): string {
+  return `<nav class="nav" aria-label="${t('Vistas', 'Views')}"><a href="#resumen">${t('Resumen', 'Overview')}</a><a href="#investigacion">${t('Investigación', 'Research')}</a><a href="#replay">Replay</a><a href="#criterios">${t('Criterios', 'Criteria')}</a></nav>`;
+}
+
+/** El selector de idioma: dos enlaces a las dos páginas generadas, sin JavaScript. */
+function languageSwitch(page: DashboardPage): string {
+  const links = page.languages;
+  if (links === undefined) return '';
+  const link = (code: 'es' | 'en', href: string): string => `<a href="${e(href)}" hreflang="${code}"${lang() === code ? ' aria-current="true"' : ''}>${code.toUpperCase()}</a>`;
+  return `<nav class="langs" aria-label="${t('Idioma', 'Language')}">${link('en', links.en)}${link('es', links.es)}</nav>`;
+}
 
 function viewHead(title: string, subtitle: string): string {
   return `<header class="viewhead"><p class="lbl">${e(subtitle)}</p><h1>${e(title)}</h1></header>`;
 }
 
 function noResearch(title: string): string {
-  return `<section class="card wide">${head(title, 'Esta página se generó sin Experiment Registry.')}<p class="note">Genera el dashboard con --registro para ver la investigación. La demo pública usa un registro sintético; los resultados reales solo se ven en local.</p></section>`;
+  return `<section class="card wide">${head(title, t('Esta página se generó sin Experiment Registry.', 'This page was generated without the Experiment Registry.'))}<p class="note">${t('Genera el dashboard con --registro para ver la investigación.', 'Generate the dashboard with --registro to see the research.')}</p></section>`;
 }
 
 /** La página completa. Pura: con los mismos datos da el mismo texto. */
 export function renderDashboard(page: DashboardPage): string {
   const s = page.snapshot;
   const research = page.research;
-  const mode = MODES[s.mode];
+  const mode = modes()[s.mode];
   const r = returns(s);
   const label = s.label;
   return `<!doctype html>
-<html lang="es">
+<html lang="${lang()}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -506,44 +551,44 @@ export function renderDashboard(page: DashboardPage): string {
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="dark">
-<title>${e(`[${mode.title}] ${PROJECT_NAME} · estado`)}</title>
+<title>${e(`[${mode.title}] ${PROJECT_NAME} · ${t('estado', 'status')}`)}</title>
 <link rel="icon" type="image/svg+xml" href="${sealFavicon()}">
 <style>${CSS}</style>
 </head>
 <body class="mode-${e(s.mode)}">
 ${topbar(page)}
 <div class="shell">
-${NAV}
+${nav()}
 <main>
 <section class="view" id="resumen">
-${viewHead('Resumen', label)}
-${s.synthetic ? INTRO : ''}
+${viewHead(t('Resumen', 'Overview'), label)}
+${s.synthetic ? intro(research !== null) : ''}
 ${summary(s, r)}
 ${playbackCard(s, r.benchName)}
 ${evolution(s, r)}
 ${researchSummary(research)}
 </section>
 <section class="view" id="investigacion">
-${viewHead('Investigación', 'Experiment Registry')}
-${research === null ? noResearch('Núcleo del registro') : `${sphereCard(research)}\n${luckCards(research)}\n${experimentsCard(research)}`}
+${viewHead(t('Investigación', 'Research'), 'Experiment Registry')}
+${research === null ? noResearch(t('Núcleo del registro', 'Registry core')) : `${sphereCard(research)}\n${luckCards(research)}\n${experimentsCard(research)}`}
 </section>
 <section class="view" id="replay">
-${viewHead('Replay', `${label} · run ${s.runId} · ${String(s.health.events)} eventos`)}
+${viewHead('Replay', `${label} · run ${s.runId} · ${String(s.health.events)} ${t('eventos', 'events')}`)}
 ${health(s)}
 ${capital(s)}
 ${positionsAndOrders(s)}
 ${activity(s)}
 ${strategiesAndAlerts(s)}
-${planB(s)}
+${planB(page, s)}
 </section>
 <section class="view" id="criterios">
-${viewHead('Criterios', 'Criterios congelados del paso 27')}
-${research === null ? noResearch('Embudo de criterios') : funnelCards(research)}
+${viewHead(t('Criterios', 'Criteria'), t('Criterios congelados del paso 27', 'Criteria frozen at step 27'))}
+${research === null ? noResearch(t('Embudo de criterios', 'Criteria funnel')) : funnelCards(research)}
 </section>
 <footer>
 ${sealSvg({ className: 'seal-foot' })}
-<p class="seal-line">${e(`${PROJECT_NAME} · sello generado del primer commit ${FIRST_COMMIT.slice(0, 7)}`)}</p>
-<p>Solo lectura: esta página no puede enviar órdenes, cambiar la configuración ni activar el freno de emergencia. Se genera a partir del diario y del registro, sin servidor ni acceso remoto. Fechas en hora de Madrid; al pasar el ratón se ve la UTC.</p>
+<p class="seal-line">${e(`${PROJECT_NAME} · ${t('sello generado del primer commit', 'seal generated from the first commit')} ${FIRST_COMMIT.slice(0, 7)}`)}</p>
+<p>${t('Solo lectura: esta página no puede enviar órdenes, cambiar la configuración ni activar el freno de emergencia. Se genera a partir del diario y del registro, sin servidor ni acceso remoto. Fechas en hora de Madrid; al pasar el ratón se ve la UTC.', 'Read only: this page cannot send orders, change the configuration or trigger the emergency brake. It is generated from the journal and the registry, with no server and no remote access. Dates in Madrid time; hover to see UTC.')}</p>
 </footer>
 </main>
 </div>

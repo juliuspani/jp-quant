@@ -7,6 +7,7 @@
 // - Las curvas del control aleatorio solo existen si el experimento las guardó; si no, la página lo dice.
 import { expectedMaxSharpe } from '../analytics/statistics.ts';
 import type { UtcMillis } from '../shared/time.ts';
+import { t } from './i18n.ts';
 import { DashboardError } from './journal.ts';
 
 export const OUTCOMES = ['aceptado', 'rechazado', 'no concluyente', 'abortado', 'en curso'] as const;
@@ -15,22 +16,22 @@ export const CRITERION_STATUSES = ['PASS', 'FAIL', 'NO CONCLUYENTE'] as const;
 export type CriterionStatus = (typeof CRITERION_STATUSES)[number];
 
 /** Criterios congelados de A.3 (docs/PROMOTION_CRITERIA.md), en su orden, con los nombres de analytics/criteria.ts. */
-export const CRITERIA: readonly { readonly id: string; readonly label: string }[] = [
-  { id: 'A.3.1', label: 'Fuera de muestra y walk-forward' },
-  { id: 'A.3.2', label: 'Deflated Sharpe' },
-  { id: 'A.3.3', label: 'Costes realistas y con margen' },
-  { id: 'A.3.4', label: 'Drawdown máximo' },
-  { id: 'A.3.5', label: 'Número mínimo de operaciones' },
-  { id: 'A.3.6', label: 'PBO máximo' },
-  { id: 'A.3.7', label: 'Stress testing' },
-  { id: 'A.3.8', label: 'Estabilidad de parámetros' },
-  { id: 'A.3.9', label: 'Regímenes' },
-  { id: 'A.3.10', label: 'Buy-and-hold ajustado por riesgo' },
-  { id: 'A.3.11', label: 'Intervalo de confianza' },
-  { id: 'A.3.12', label: 'Control aleatorio' },
-  { id: 'A.3.13', label: 'Estabilidad temporal y por activo' },
-  { id: 'A.3.14', label: 'Ablación y universo alternativo' },
-  { id: 'A.3.15', label: 'Pruebas de humo' },
+export const CRITERIA: readonly { readonly id: string; readonly label: string; readonly labelEn: string }[] = [
+  { id: 'A.3.1', label: 'Fuera de muestra y walk-forward', labelEn: 'Out of sample and walk-forward' },
+  { id: 'A.3.2', label: 'Deflated Sharpe', labelEn: 'Deflated Sharpe' },
+  { id: 'A.3.3', label: 'Costes realistas y con margen', labelEn: 'Realistic costs, with margin' },
+  { id: 'A.3.4', label: 'Drawdown máximo', labelEn: 'Maximum drawdown' },
+  { id: 'A.3.5', label: 'Número mínimo de operaciones', labelEn: 'Minimum number of trades' },
+  { id: 'A.3.6', label: 'PBO máximo', labelEn: 'Maximum PBO' },
+  { id: 'A.3.7', label: 'Stress testing', labelEn: 'Stress testing' },
+  { id: 'A.3.8', label: 'Estabilidad de parámetros', labelEn: 'Parameter stability' },
+  { id: 'A.3.9', label: 'Regímenes', labelEn: 'Regimes' },
+  { id: 'A.3.10', label: 'Buy-and-hold ajustado por riesgo', labelEn: 'Risk-adjusted buy-and-hold' },
+  { id: 'A.3.11', label: 'Intervalo de confianza', labelEn: 'Confidence interval' },
+  { id: 'A.3.12', label: 'Control aleatorio', labelEn: 'Random control' },
+  { id: 'A.3.13', label: 'Estabilidad temporal y por activo', labelEn: 'Stability over time and assets' },
+  { id: 'A.3.14', label: 'Ablación y universo alternativo', labelEn: 'Ablation and alternative universe' },
+  { id: 'A.3.15', label: 'Pruebas de humo', labelEn: 'Smoke tests' },
 ];
 
 /** Un experimento tal como lo deja el registro: su alta y su último cierre. */
@@ -155,22 +156,22 @@ export function buildResearch(input: ResearchInput): ResearchSnapshot {
   // Embudo: solo los evaluados con todos los criterios; en cada paso, los que superan ese criterio y todos los anteriores.
   const evaluated = sorted.filter((e) => CRITERIA.every((c) => Object.hasOwn(e.criteria, c.id)));
   const funnel: FunnelStep[] = [
-    { label: 'En el registro', criterion: null, count: sorted.length },
-    { label: 'Evaluados con los criterios congelados', criterion: null, count: evaluated.length },
+    { label: t('En el registro', 'In the registry'), criterion: null, count: sorted.length },
+    { label: t('Evaluados con los criterios congelados', 'Evaluated against the frozen criteria'), criterion: null, count: evaluated.length },
   ];
   let alive = evaluated;
   for (const c of CRITERIA) {
     alive = alive.filter((e) => e.criteria[c.id] === 'PASS');
-    funnel.push({ label: c.label, criterion: c.id, count: alive.length });
+    funnel.push({ label: t(c.label, c.labelEn), criterion: c.id, count: alive.length });
   }
   const failures = CRITERIA.map((c) => ({
-    criterion: c.id, label: c.label,
+    criterion: c.id, label: t(c.label, c.labelEn),
     fail: evaluated.filter((e) => e.criteria[c.id] === 'FAIL').length,
     inconclusive: evaluated.filter((e) => e.criteria[c.id] === 'NO CONCLUYENTE').length,
   })).filter((row) => row.fail + row.inconclusive > 0).sort((a, b) => b.fail - a.fail || b.inconclusive - a.inconclusive);
 
   const events = sorted.flatMap((e) => [
-    { at: e.registeredAt, text: `${e.id} · registrado · ${e.family}` },
+    { at: e.registeredAt, text: `${e.id} · ${t('registrado', 'registered')} · ${e.family}` },
     ...(e.closedAt === null ? [] : [{ at: e.closedAt, text: `${e.id} · ${e.state}${e.verdict === null ? '' : ` · ${e.verdict}`} · ${e.family}` }]),
   ]).sort((a, b) => b.at - a.at);
 

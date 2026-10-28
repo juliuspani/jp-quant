@@ -41,9 +41,10 @@ test('sin recursos externos ni nada que envíe datos: la CSP solo admite su hoja
     /<iframe/i, /<form/i, /<img/i, /<object/i, /<embed/i, /<base/i, /<use/i, /<image/i, /<foreignObject/i, /<video|<audio|<source/i,
     /https?:\/\//i, /\son[a-z]+=/i, /\sstyle=/i, /\s(src|srcset|action|xlink:href)=/i, /javascript:/i, /http-equiv="refresh"/i,
   ]) assert.doesNotMatch(html, forbidden, String(forbidden));
-  // Los únicos enlaces: las cuatro vistas (y, en la demo, la metodología provisional) y el favicon en data URI.
+  // Los únicos enlaces: las cuatro vistas y el favicon en data URI. El selector de idioma y el enlace al plan B solo salen
+  // si la página los pide (demo pública, test/demo/demo.test.ts).
   const hrefs = [...html.matchAll(/\shref="([^"]*)"/g)].map((m) => m[1]);
-  assert.deepEqual(hrefs.filter((h) => h?.startsWith('#')), ['#resumen', '#investigacion', '#replay', '#criterios', '#criterios']);
+  assert.deepEqual(hrefs.filter((h) => h?.startsWith('#')), ['#resumen', '#investigacion', '#replay', '#criterios']);
   assert.deepEqual(hrefs.filter((h) => !h?.startsWith('#')), [sealFavicon()]);
   assert.equal((html.match(/<link /g) ?? []).length, 1);
   assert.ok(html.includes(`<link rel="icon" type="image/svg+xml" href="${sealFavicon()}">`));
@@ -179,12 +180,13 @@ test('sin marca de agua: con la etiqueta DEMO y el bloque de bienvenida basta', 
   assert.ok(!real.includes('DATOS DE DEMOSTRACIÓN') && !real.includes('class="intro"'));
 });
 
-test('solo en la demo: dos líneas para quien llega de fuera, con la metodología provisional', () => {
+test('solo en la demo: dos líneas para quien llega de fuera, que dicen qué es sintético y qué es real', () => {
   const intro = /<section class="intro">([\s\S]*?)<\/section>/.exec(section('resumen'))?.[1] ?? '';
   assert.equal((intro.match(/<p>/g) ?? []).length, 2);
-  assert.match(intro, /<strong>JP Quant<\/strong> es una consola personal de investigación cuantitativa/);
+  assert.match(intro, /<strong>JP Quant<\/strong> es una consola de investigación cuantitativa/);
   assert.match(intro, /<strong>datos sintéticos de demostración<\/strong>/);
-  assert.ok(intro.includes('<a href="#criterios">Metodología (provisional)</a>'));
+  assert.match(intro, /<strong>registro real<\/strong> del estudio, en el que ninguna estrategia ha sido aprobada/);
+  assert.ok(intro.includes('un hueco en ETH/EUR'), 'el hueco de los datos es intencionado y lo dice');
   assert.ok(section('resumen').indexOf('class="intro"') < section('resumen').indexOf('class="sentence"'), 'al principio del Resumen');
 });
 
@@ -219,7 +221,7 @@ test('cifras pegadas a su unidad con espacio no separable; «en curso» en gris 
   assert.ok(resumen.includes('10.141,04 <i>EUR</i>'));
   assert.ok(resumen.includes('1,41 %'));
   assert.doesNotMatch(withoutScript(html).replace(/<style>[\s\S]*?<\/style>/, ''), /\d %|\d <i>/, 'ninguna cifra separada de su unidad');
-  assert.match(section('replay'), /<section class="card wide"><h2>Plan B<\/h2><p class="lede">Sin reparto objetivo todavía: [^<]+<\/p><\/section>/);
+  assert.match(section('replay'), /<section class="card wide"><h2>Plan B<\/h2><p class="lede">Este diario no tiene reparto objetivo: [^<]+<\/p><\/section>/);
 });
 
 test('resumen arriba: una frase con los datos, cuatro cifras y el estado con texto', () => {

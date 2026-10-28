@@ -8,6 +8,7 @@ import type { UtcMillis } from '../shared/time.ts';
 import { Decimal } from '../shared/decimal.ts';
 import type { CurveMark, DashboardSnapshot } from './dashboard.ts';
 import { day, e, float, head, money, withCurrency } from './html-kit.ts';
+import { t } from './i18n.ts';
 
 export const MAX_PLAYBACK_POINTS = 400;
 const W = 720;
@@ -17,7 +18,7 @@ const RIGHT = 12;
 const TOP = 12;
 const BOTTOM = 14;
 
-const KIND_LABEL: Readonly<Record<CurveMark['kind'], string>> = { buy: 'Compra', sell: 'Venta', risk: 'Risk' };
+const kindLabel = (kind: CurveMark['kind']): string => (kind === 'buy' ? t('Compra', 'Buy') : kind === 'sell' ? t('Venta', 'Sell') : 'Risk');
 
 /** Índices de la curva que se dibujan: todos, o MAX_PLAYBACK_POINTS repartidos con el primero y el último. */
 export function playbackIndices(n: number): number[] {
@@ -59,29 +60,29 @@ export function playbackCard(s: DashboardSnapshot, benchName: string): string {
     const i = steps[j] ?? 0;
     const cx = x(i).toFixed(1);
     const cy = y(system[i] ?? 100);
-    const title = `<title>${e(`${day(m.at)} · ${KIND_LABEL[m.kind]} ${m.symbol ?? ''} · ${m.detail}`)}</title>`;
+    const title = `<title>${e(`${day(m.at)} · ${kindLabel(m.kind)} ${m.symbol ?? ''} · ${m.detail}`)}</title>`;
     if (m.kind === 'risk') {
       const yy = cy + 10;
       return `<path class="pb-mk mk-risk" data-i="${String(i)}" d="M${(x(i) - 3).toFixed(1)} ${(yy - 3).toFixed(1)}l6 6m0 -6l-6 6">${title}</path>`;
     }
     return `<circle class="pb-mk mk-${m.kind}" data-i="${String(i)}" cx="${cx}" cy="${cy.toFixed(1)}" r="3.5">${title}</circle>`;
   }).join('');
-  const feed = marks.map((m, j) => `<li class="pb-ev ev-${m.kind}" data-i="${String(steps[j] ?? 0)}" data-k="${m.kind === 'risk' ? 'risk' : 'trade'}"><time>${e(day(m.at))}</time><b>${KIND_LABEL[m.kind]}</b><span>${e(m.symbol ?? '—')}</span><span>${detail(m, s.quoteCurrency)}</span></li>`).join('');
+  const feed = marks.map((m, j) => `<li class="pb-ev ev-${m.kind}" data-i="${String(steps[j] ?? 0)}" data-k="${m.kind === 'risk' ? 'risk' : 'trade'}"><time>${e(day(m.at))}</time><b>${kindLabel(m.kind)}</b><span>${e(m.symbol ?? '—')}</span><span>${detail(m, s.quoteCurrency)}</span></li>`).join('');
   const trades = marks.filter((m) => m.kind !== 'risk').length;
   const stopped = marks.length - trades;
   const last = idx.length - 1;
   const fmt = (v: number): string => float(v, 1);
   const base = y(100).toFixed(1);
   return `<section class="card wide playback" data-d="${e(times.map(day).join('|'))}" data-s="${e(system.map(fmt).join('|'))}" data-b="${e(bench === null ? '' : bench.map(fmt).join('|'))}">
-${head('Replay en marcha', 'El sistema vuelve a recorrer el periodo: la curva avanza, cada punto es una compra o una venta y cada aspa, una orden que el control de riesgo frenó o redujo.', 'replay')}
-<p class="pb-status"><span class="pb-when">${e(day(times[last] ?? 0))}</span><span>Sistema <b class="pb-sys">${e(fmt(system[last] ?? 100))}</b></span>${bench === null ? '' : `<span>${e(benchName)} <b class="pb-bench">${e(fmt(bench[last] ?? 100))}</b></span>`}<span><b class="pb-n" data-k="trade">${String(trades)}</b> operaciones</span><span><b class="pb-n" data-k="risk">${String(stopped)}</b> frenadas por Risk</span></p>
-<svg class="pb-chart" viewBox="0 0 ${String(W)} ${String(H)}" role="img" aria-label="${e(`Reproducción del replay: ${String(trades)} operaciones y ${String(stopped)} órdenes frenadas por el control de riesgo, en base 100`)}">
+${head(t('Replay en marcha', 'Replay in motion'), t('El sistema vuelve a recorrer el periodo: la curva avanza, cada punto es una compra o una venta y cada aspa, una orden que el control de riesgo frenó o redujo.', 'The system runs through the period again: the curve advances, each dot is a buy or a sell and each cross an order the risk control stopped or reduced.'), 'replay')}
+<p class="pb-status"><span class="pb-when">${e(day(times[last] ?? 0))}</span><span>${t('Sistema', 'System')} <b class="pb-sys">${e(fmt(system[last] ?? 100))}</b></span>${bench === null ? '' : `<span>${e(benchName)} <b class="pb-bench">${e(fmt(bench[last] ?? 100))}</b></span>`}<span><b class="pb-n" data-k="trade">${String(trades)}</b> ${t('operaciones', 'trades')}</span><span><b class="pb-n" data-k="risk">${String(stopped)}</b> ${t('frenadas por Risk', 'stopped by Risk')}</span></p>
+<svg class="pb-chart" viewBox="0 0 ${String(W)} ${String(H)}" role="img" aria-label="${e(t(`Reproducción del replay: ${String(trades)} operaciones y ${String(stopped)} órdenes frenadas por el control de riesgo, en base 100`, `Replay playback: ${String(trades)} trades and ${String(stopped)} orders stopped by the risk control, base 100`))}">
 <line class="pb-base" x1="${String(LEFT)}" y1="${base}" x2="${String(W - RIGHT)}" y2="${base}"/><text class="pb-axis" x="${String(LEFT - 6)}" y="${base}">100</text>
 ${bench === null ? '' : line('ln-bench', bench)}
 ${line('ln-sys', system)}
 ${shapes}
 </svg>
-<p class="legend"><span><span class="key"></span>Sistema</span>${bench === null ? '' : `<span><span class="key bench"></span>${e(`Comprar y mantener ${benchName}`)}</span>`}<span><span class="pk buy"></span>Compra</span><span><span class="pk sell"></span>Venta</span><span><span class="pk risk">×</span>Frenada por Risk</span></p>
-<ol class="pb-feed">${feed === '' ? '<li class="pb-ev">Ninguna operación ni orden frenada en el periodo.</li>' : feed}</ol>
+<p class="legend"><span><span class="key"></span>${t('Sistema', 'System')}</span>${bench === null ? '' : `<span><span class="key bench"></span>${e(`${t('Comprar y mantener', 'Buy and hold')} ${benchName}`)}</span>`}<span><span class="pk buy"></span>${t('Compra', 'Buy')}</span><span><span class="pk sell"></span>${t('Venta', 'Sell')}</span><span><span class="pk risk">×</span>${t('Frenada por Risk', 'Stopped by Risk')}</span></p>
+<ol class="pb-feed">${feed === '' ? `<li class="pb-ev">${t('Ninguna operación ni orden frenada en el periodo.', 'No trades or stopped orders in the period.')}</li>` : feed}</ol>
 </section>`;
 }

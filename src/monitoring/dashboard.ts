@@ -6,6 +6,7 @@ import { buyAndHold } from '../analytics/benchmark.ts';
 import { TERMINAL_STATES, type OrderState } from '../kernel/execution.ts';
 import { Decimal } from '../shared/decimal.ts';
 import type { UtcMillis } from '../shared/time.ts';
+import { t } from './i18n.ts';
 import { DashboardError, field, flag, integer, object, text, textOrNull, type JsonObject, type ReplayJournal } from './journal.ts';
 
 const SCALE = 12;
@@ -190,15 +191,15 @@ export interface DashboardSnapshot {
 
 /** Reglas fijas de alertas: tipo de evento → nivel y mensaje, o null si ese evento no alerta. */
 const ALERT_RULES: Readonly<Record<string, (p: JsonObject, where: string) => { level: AlertLevel; message: string } | null>> = {
-  TradingHalted: (p, w) => ({ level: 'CRITICAL', message: `Trading detenido: ${text(p, 'reason', w)}` }),
-  KillSwitchChanged: (p, w) => (flag(p, 'active', w) ? { level: 'CRITICAL', message: 'Kill switch activado' } : { level: 'WARNING', message: 'Kill switch desactivado' }),
-  ReconciliationCompleted: (p, w) => (flag(p, 'resolved', w) ? null : { level: 'CRITICAL', message: `Reconciliación sin resolver: ${textOrNull(p, 'reason', w) ?? 'sin motivo'}` }),
-  ExecutionModeChanged: (p, w) => ({ level: 'CRITICAL', message: `Execution en ${text(p, 'mode', w)}: ${textOrNull(p, 'reason', w) ?? 'sin motivo'}` }),
-  ExecutionRejected: (p, w) => ({ level: 'WARNING', message: `Rechazo de ${text(p, 'layer', w)}: ${text(p, 'reasonCode', w)}` }),
-  VenueRequestFailed: (p, w) => ({ level: 'WARNING', message: `Fallo del venue (${text(p, 'operation', w)}): ${text(p, 'errorClass', w)}` }),
-  MarketDataGap: (p, w) => ({ level: 'WARNING', message: `Hueco de datos en ${text(p, 'symbol', w)}` }),
-  MarketDataDiscarded: (p, w) => ({ level: 'WARNING', message: `Dato descartado (${text(p, 'kind', w)}): ${text(p, 'reason', w)}` }),
-  RiskDecisionMade: (p, w) => (text(p, 'decision', w) === 'APPROVED' ? null : { level: 'INFO', message: `Risk: ${text(p, 'decision', w)} por ${textOrNull(p, 'reasonCode', w) ?? 'sin código'}` }),
+  TradingHalted: (p, w) => ({ level: 'CRITICAL', message: `${t('Trading detenido', 'Trading halted')}: ${text(p, 'reason', w)}` }),
+  KillSwitchChanged: (p, w) => (flag(p, 'active', w) ? { level: 'CRITICAL', message: t('Kill switch activado', 'Kill switch on') } : { level: 'WARNING', message: t('Kill switch desactivado', 'Kill switch off') }),
+  ReconciliationCompleted: (p, w) => (flag(p, 'resolved', w) ? null : { level: 'CRITICAL', message: `${t('Reconciliación sin resolver', 'Unresolved reconciliation')}: ${textOrNull(p, 'reason', w) ?? t('sin motivo', 'no reason')}` }),
+  ExecutionModeChanged: (p, w) => ({ level: 'CRITICAL', message: `${t('Execution en', 'Execution in')} ${text(p, 'mode', w)}: ${textOrNull(p, 'reason', w) ?? t('sin motivo', 'no reason')}` }),
+  ExecutionRejected: (p, w) => ({ level: 'WARNING', message: `${t('Rechazo de', 'Rejection by')} ${text(p, 'layer', w)}: ${text(p, 'reasonCode', w)}` }),
+  VenueRequestFailed: (p, w) => ({ level: 'WARNING', message: `${t('Fallo del venue', 'Venue failure')} (${text(p, 'operation', w)}): ${text(p, 'errorClass', w)}` }),
+  MarketDataGap: (p, w) => ({ level: 'WARNING', message: `${t('Hueco de datos en', 'Data gap in')} ${text(p, 'symbol', w)}` }),
+  MarketDataDiscarded: (p, w) => ({ level: 'WARNING', message: `${t('Dato descartado', 'Data discarded')} (${text(p, 'kind', w)}): ${text(p, 'reason', w)}` }),
+  RiskDecisionMade: (p, w) => (text(p, 'decision', w) === 'APPROVED' ? null : { level: 'INFO', message: `Risk: ${text(p, 'decision', w)} ${t('por', 'by')} ${textOrNull(p, 'reasonCode', w) ?? t('sin código', 'no code')}` }),
 };
 
 function decimal(object_: JsonObject, key: string, where: string): Decimal {
@@ -478,8 +479,8 @@ export function buildDashboard(journal: ReplayJournal, context: DashboardContext
   let benchmarkNote: string | null = null;
   const reference = closes.get(context.benchmark.symbol);
   const firstSample = sampleAt[0];
-  if (reference === undefined) benchmarkNote = `${context.benchmark.symbol} no está en el diario`;
-  else if (firstSample === undefined) benchmarkNote = 'el sistema aún no ha evaluado ninguna vela';
+  if (reference === undefined) benchmarkNote = `${context.benchmark.symbol} ${t('no está en el diario', 'is not in the journal')}`;
+  else if (firstSample === undefined) benchmarkNote = t('el sistema aún no ha evaluado ninguna vela', 'the system has not evaluated any candle yet');
   else {
     benchmark = buyAndHold({
       prices: new Map([[context.benchmark.symbol, reference.points]]), from: firstSample, samples: sampleAt, capital: start.toAnalysis(),
@@ -487,7 +488,7 @@ export function buildDashboard(journal: ReplayJournal, context: DashboardContext
     }).equity;
   }
 
-  const contributionsNote = 'Capital inicial del run (la foto inicial de la cuenta). El replay no tiene aportaciones periódicas.';
+  const contributionsNote = t('Capital inicial del run (la foto inicial de la cuenta). El replay no tiene aportaciones periódicas.', 'Starting capital of the run (the first account snapshot). The replay has no periodic contributions.');
   const allocation: AllocationRow[] = [
     { asset: quote, worth: cash },
     ...positions.map((row) => ({ asset: baseOf(row.symbol), worth: Decimal.parse(row.value) })),
@@ -522,16 +523,16 @@ export function buildDashboard(journal: ReplayJournal, context: DashboardContext
   const attention: AttentionItem[] = [];
   const critical = (message: string): number => attention.push({ level: 'CRITICAL', message });
   const warning = (message: string): number => attention.push({ level: 'WARNING', message });
-  if (halted !== null) critical(`el sistema se ha detenido (${halted})`);
-  if (killSwitch) critical('el freno de emergencia (kill switch) está activado');
-  if (executionMode !== 'NORMAL') critical(`la ejecución de órdenes está en modo ${executionMode}`);
-  if (reconciliation.lastResolved === false) critical('las cuentas no cuadran con el exchange (reconciliación sin resolver)');
-  else if (reconciliation.lastResolved === null) warning('aún no se ha comprobado que las cuentas cuadren con el exchange');
+  if (halted !== null) critical(t(`el sistema se ha detenido (${halted})`, `the system has halted (${halted})`));
+  if (killSwitch) critical(t('el freno de emergencia (kill switch) está activado', 'the emergency brake (kill switch) is on'));
+  if (executionMode !== 'NORMAL') critical(t(`la ejecución de órdenes está en modo ${executionMode}`, `order execution is in ${executionMode} mode`));
+  if (reconciliation.lastResolved === false) critical(t('las cuentas no cuadran con el exchange (reconciliación sin resolver)', 'the books do not match the exchange (unresolved reconciliation)'));
+  else if (reconciliation.lastResolved === null) warning(t('aún no se ha comprobado que las cuentas cuadren con el exchange', 'the books have not been checked against the exchange yet'));
   for (const f of feedRows) {
-    if (f.stale) warning(`los datos de ${f.symbol} llegan con retraso`);
-    if (f.gaps > 0) warning(`${String(f.gaps)} ${f.gaps === 1 ? 'hueco' : 'huecos'} en los datos de ${f.symbol}`);
+    if (f.stale) warning(t(`los datos de ${f.symbol} llegan con retraso`, `${f.symbol} data is arriving late`));
+    if (f.gaps > 0) warning(t(`${String(f.gaps)} ${f.gaps === 1 ? 'hueco' : 'huecos'} en los datos de ${f.symbol}`, `${String(f.gaps)} ${f.gaps === 1 ? 'gap' : 'gaps'} in the ${f.symbol} data`));
   }
-  for (const row of positions) if (row.protectiveStop === null) warning(`la posición en ${row.symbol} no tiene stop de protección`);
+  for (const row of positions) if (row.protectiveStop === null) warning(t(`la posición en ${row.symbol} no tiene stop de protección`, `the ${row.symbol} position has no protective stop`));
   const snapshot: DashboardSnapshot = {
     mode: context.mode,
     label: context.label,
