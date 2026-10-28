@@ -117,7 +117,8 @@ La persona revisó la v1.0.0 publicada y pidió cinco cambios, en un commit nuev
    - El hueco de ETH/EUR sí es intencionado, y la introducción lo dice.
    - Se ve además un riesgo real del sistema, que no se corrige aquí: tras una salida que no se ejecuta, la posición
      queda sin stop hasta la vela siguiente, porque el stop se canceló para vender. Va con los pasos 35 y 36 (Execution
-     completo).
+     completo). Lo sigue el issue público
+     [#1](https://github.com/juliuspani/jp-quant/issues/1), con las etiquetas `bug` y `known-issue`.
 5. **Inglés y español** (`src/monitoring/i18n.ts`): la página se genera entera en un idioma, `t(es, en)`, con cifras y
    fechas de cada idioma. Los motivos conocidos del diario se traducen solo al mostrarlos; el diario no cambia. La demo
    pública genera cuatro páginas: `/` y `/plan-b/` en inglés, y `/es/` y `/plan-b/es/` en español. El selector son

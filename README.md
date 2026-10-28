@@ -113,6 +113,10 @@ Each one is backed by a test or a written manual procedure in
   environment variable, and exchange keys. Without all three the process refuses to start. This public repository has
   no live configuration.
 
+**Known issue:** if an exit order fails to fill, the position stays without a protective stop until the next candle
+([#1](https://github.com/juliuspani/jp-quant/issues/1)). It only affects backtests and paper today, and it will be
+fixed in the steps that complete Execution.
+
 ## Research methodology
 
 The full procedure is in [`.claude/skills/quant-research`](.claude/skills/quant-research/SKILL.md) and the frozen

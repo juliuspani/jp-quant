@@ -5,7 +5,7 @@ repository starts at v1.0.0 with a fresh history.
 
 **Last closed step:** 31 (the decision point of the first research stretch; the plan B steps 41B, 41C and 49 followed).
 
-## [Unreleased] (proposed as 1.0.1)
+## [1.0.1] — 2026-10-28
 
 ### Changed
 
@@ -20,6 +20,12 @@ repository starts at v1.0.0 with a fresh history.
   hashed page script are unchanged.
 - Roadmap: the plan B bot already exists in paper (v1.0); v1.1 is its automatic run with real money, after its own
   safety checks.
+
+### Known issues
+
+- An exit order that fails to fill leaves the position without a protective stop until the next candle
+  ([#1](https://github.com/juliuspani/jp-quant/issues/1)). Backtest and paper only; it will be fixed with the steps
+  that complete Execution.
 
 ## [1.0.0] — 2026-10-28
 

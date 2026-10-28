@@ -1,6 +1,6 @@
 {
   "name": "jp-quant",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Quantitative crypto research platform: deterministic backtester, strict risk engine and a local research dashboard (paper by default)",
   "private": true,
   "license": "MIT",
