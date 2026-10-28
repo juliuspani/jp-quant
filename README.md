@@ -67,7 +67,9 @@ account and no API key:
 npm run fetch-candles -- --pair XBTEUR --interval 1d --out my-candles.csv
 ```
 
-That gives the last 720 candles; they are for your own use, do not redistribute them. Your runs stay on your computer
+That gives the last 720 candles. They are for your own use (CSV files in the project folder are ignored by Git, so
+they are not uploaded by mistake). 720 daily candles are a short history: a slow strategy like the template needs more,
+so expect *not enough data* until you test it on a longer CSV of your own. Your runs stay on your computer
 (`sandbox-runs/`). They never touch the project's official research registry.
 
 ## What you get

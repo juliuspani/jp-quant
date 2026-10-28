@@ -43,3 +43,6 @@ site/
 
 # Ejecuciones locales del sandbox (npm run test-strategy): registro local e informes
 sandbox-runs/
+
+# Velas propias o descargadas en la raíz (npm run fetch-candles): son para uso propio, no se publican
+/*.csv
