@@ -33,6 +33,32 @@ function modes(): Readonly<Record<DashboardMode, { readonly title: string; reado
   };
 }
 
+/**
+ * Lo que muestran las redes al compartir una página de la demo pública (paso 49): Open Graph y Twitter Card. Son etiquetas
+ * <meta> que la página no carga ni ejecuta, así que la CSP no cambia. URL absolutas, como piden esos formatos.
+ */
+export interface ShareMeta {
+  readonly title: string;
+  readonly description: string;
+  readonly url: string;
+  readonly image: string;
+  readonly imageAlt: string;
+}
+
+function shareTags(share: ShareMeta | undefined): string {
+  if (share === undefined) return '';
+  const og = (property: string, content: string): string => `<meta property="${property}" content="${e(content)}">`;
+  const tw = (name: string, content: string): string => `<meta name="${name}" content="${e(content)}">`;
+  return [
+    og('og:type', 'website'), og('og:site_name', PROJECT_NAME), og('og:title', share.title), og('og:description', share.description), og('og:url', share.url),
+    og('og:image', share.image), og('og:image:width', '1200'), og('og:image:height', '627'), og('og:image:alt', share.imageAlt),
+    og('og:locale', lang() === 'en' ? 'en_GB' : 'es_ES'),
+    tw('twitter:card', 'summary_large_image'), tw('twitter:title', share.title), tw('twitter:description', share.description),
+    tw('twitter:image', share.image), tw('twitter:image:alt', share.imageAlt),
+    `<meta name="description" content="${e(share.description)}">`,
+  ].join('\n');
+}
+
 export interface DashboardPage {
   readonly snapshot: DashboardSnapshot;
   readonly research: ResearchSnapshot | null; // null: generado sin registro
@@ -41,6 +67,7 @@ export interface DashboardPage {
   readonly planB?: DashboardSnapshot; // el replay del bot de plan B, para su tarjeta (demo pública)
   readonly luckIllustration?: LuckIllustration; // abanico ilustrativo con el replay sintético, si el registro no guardó curvas
   readonly planBLink?: string; // enlace a la página completa del Autopilot (antes «bot de plan B»)
+  readonly share?: ShareMeta; // etiquetas Open Graph y Twitter Card de la demo pública; sin ellas, ninguna
 }
 
 const CSS = `
@@ -554,6 +581,7 @@ export function renderDashboard(page: DashboardPage): string {
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="dark">
 <title>${e(`[${mode.title}] ${PROJECT_NAME} · ${t('estado', 'status')}`)}</title>
+${shareTags(page.share)}
 <link rel="icon" type="image/svg+xml" href="${sealFavicon()}">
 <style>${CSS}</style>
 </head>

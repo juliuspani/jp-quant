@@ -9,7 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { DEMO_HOST, DEMO_PATHS, demoPage, demoPages, demoServer, autopilotPage } from '../../demo/demo.ts';
+import { autopilotPage, DEMO_HOST, DEMO_PATHS, demoPage, demoPages, demoServer, OG_IMAGE_FILE, OG_IMAGE_SOURCE, PAGES_URL } from '../../demo/demo.ts';
 import { DASHBOARD_CSP } from '../../src/monitoring/dashboard-html.ts';
 import { PAGE_SCRIPT } from '../../src/monitoring/page-script.ts';
 import { ROOT } from '../invariants/repo.ts';
@@ -43,6 +43,21 @@ test('Investigación y Criterios usan el registro real: 0 estrategias candidatas
   assert.ok(es.includes('0 estrategias candidatas aprobadas'));
   assert.ok(!en.includes('demo-momento') && !en.includes('demo-tendencia'), 'sin los experimentos inventados del registro sintético');
   assert.ok(en.includes('tendencia-donchian-atr'), 'con las familias reales');
+});
+
+test('cada página publicada lleva Open Graph y Twitter Card con URL absolutas, sin tocar la CSP', () => {
+  for (const [path, html] of pages) {
+    const meta = (key: string): string | undefined => new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)">`).exec(html)?.[1];
+    assert.equal(meta('og:type'), 'website', path);
+    assert.equal(meta('og:url'), `${PAGES_URL}${path.slice(1)}`, path);
+    assert.equal(meta('og:image'), `${PAGES_URL}${OG_IMAGE_FILE}`, path);
+    assert.equal(meta('twitter:card'), 'summary_large_image', path);
+    for (const key of ['og:title', 'og:description', 'og:image:alt', 'twitter:title', 'twitter:image']) assert.ok((meta(key) ?? '') !== '', `${path}: falta ${key}`);
+    assert.ok(html.includes(`<meta http-equiv="Content-Security-Policy" content="${DASHBOARD_CSP}">`), 'la CSP no cambia');
+  }
+  assert.match(pages.get('/es/') ?? '', /<meta property="og:locale" content="es_ES">/);
+  const png = readFileSync(OG_IMAGE_SOURCE);
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 627], 'og-demo.png de 1200×627');
 });
 
 test('el abanico «¿suerte o ventaja?» se ve, etiquetado como ilustración sintética y con las cifras reales del control', () => {
@@ -99,6 +114,7 @@ test('--static escribe las cuatro páginas y .nojekyll, sin servidor', () => {
     assert.equal(r.status, 0, r.stderr);
     for (const [path, html] of pages) assert.equal(readFileSync(join(dir, ...path.split('/').filter((p) => p !== ''), 'index.html'), 'utf8'), html, path);
     assert.ok(existsSync(join(dir, '.nojekyll')));
+    assert.deepEqual(readFileSync(join(dir, OG_IMAGE_FILE)), readFileSync(OG_IMAGE_SOURCE), 'la imagen de og:image se publica en la raíz');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

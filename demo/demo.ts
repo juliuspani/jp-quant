@@ -14,7 +14,7 @@
 //      npm run demo -- --static <carpeta>
 //      npm run demo:autopilot
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -24,7 +24,7 @@ import { controlCurves } from '../src/app/control-curves.ts';
 import { controlInputs } from '../src/app/criteria-evidence.ts';
 import { contextFromCard, researchFrom } from '../src/app/dashboard-command.ts';
 import { buildDashboard, type DashboardSnapshot } from '../src/monitoring/dashboard.ts';
-import { DASHBOARD_CSP, renderDashboard } from '../src/monitoring/dashboard-html.ts';
+import { DASHBOARD_CSP, renderDashboard, type ShareMeta } from '../src/monitoring/dashboard-html.ts';
 import type { LuckIllustration, RealControl } from '../src/monitoring/research-html.ts';
 import { t, withLang, type Lang } from '../src/monitoring/i18n.ts';
 import { parseJournal } from '../src/monitoring/journal.ts';
@@ -98,12 +98,33 @@ function autopilotSnapshot(): DashboardSnapshot {
  * La página de la demo: el replay determinista de BASELINE, con un tope de exposición bajo para que se vea actuar a Risk,
  * el registro real del estudio y, en la tarjeta del Autopilot, el replay del Autopilot.
  */
+// Lo que se ve al compartir las páginas publicadas en GitHub Pages (Open Graph y Twitter Card): URL absolutas.
+export const PAGES_URL = 'https://juliuspani.github.io/jp-quant/';
+export const OG_IMAGE_FILE = 'og-demo.png'; // en la raíz de Pages; sale de docs/assets/ (scripts/record-demo.ts --solo-og)
+export const OG_IMAGE_SOURCE = resolve(import.meta.dirname, '..', 'docs', 'assets', OG_IMAGE_FILE);
+
+function share(path: DemoPath): ShareMeta {
+  const autopilot = path.startsWith('/autopilot/');
+  return {
+    title: autopilot
+      ? t('JP Quant · Autopilot: DCA pasivo y rebalanceo en paper (demo)', 'JP Quant · Autopilot: passive DCA & rebalancing in paper (demo)')
+      : t('JP Quant · comprobar con honestidad si una estrategia tiene ventaja o es suerte (demo)', 'JP Quant · check honestly whether a strategy has a real edge or is just luck (demo)'),
+    description: autopilot
+      ? t('Compras periódicas y rebalanceo, todo dimensionado por el control de riesgo y con stop de protección. Datos sintéticos, solo paper; no intenta batir al mercado. No es asesoramiento financiero.', 'Regular purchases and rebalancing, every order sized by the risk engine and protected by a stop. Synthetic data, paper only; it does not try to beat the market. Not financial advice.')
+      : t('Un replay sintético por Strategy → Risk → Execution y el registro real del estudio: ninguna estrategia aprobada. Sin servidor, sin claves y sin dinero. No es asesoramiento financiero.', 'A synthetic replay through Strategy → Risk → Execution and the real research registry: no strategy approved. No server, no keys, no money. Not financial advice.'),
+    url: `${PAGES_URL}${path.slice(1)}`,
+    image: `${PAGES_URL}${OG_IMAGE_FILE}`,
+    imageAlt: t('La tarjeta «Replay en marcha» de la demo de JP Quant, con datos sintéticos (DEMO): la curva frente a BTC, operaciones y órdenes frenadas por el control de riesgo', 'The "Replay in motion" card of the JP Quant demo, with synthetic data (DEMO): the equity curve against BTC, trades and orders stopped by the risk engine'),
+  };
+}
+
 export function demoPage(language: Lang = 'en'): string {
   return withLang(language, () => renderDashboard({
     snapshot: strategySnapshot(),
     research: researchFrom(readFileSync(REGISTRY, 'utf8'), []),
     commit: null,
     languages: language === 'en' ? { en: './', es: 'es/' } : { en: '../', es: './' },
+    share: share(language === 'en' ? '/' : '/es/'),
     planB: autopilotSnapshot(),
     luckIllustration: luckIllustration(),
     planBLink: language === 'en' ? 'autopilot/' : '../autopilot/es/',
@@ -117,6 +138,7 @@ export function autopilotPage(language: Lang = 'en'): string {
     research: researchFrom(readFileSync(REGISTRY, 'utf8'), []),
     commit: null,
     languages: language === 'en' ? { en: './', es: 'es/' } : { en: '../', es: './' },
+    share: share(language === 'en' ? '/autopilot/' : '/autopilot/es/'),
   }));
 }
 
@@ -170,6 +192,7 @@ function main(): void {
       writeFileSync(join(dir, 'index.html'), html, 'utf8');
     }
     writeFileSync(join(values.static, '.nojekyll'), '', 'utf8'); // GitHub Pages sirve los archivos tal cual
+    copyFileSync(OG_IMAGE_SOURCE, join(values.static, OG_IMAGE_FILE)); // la imagen de og:image, con URL absoluta
     process.stdout.write(`demo: ${String(pages.size)} páginas estáticas en ${values.static}\n`);
     return;
   }

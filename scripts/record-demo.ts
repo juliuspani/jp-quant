@@ -8,7 +8,10 @@
 // - Falla si el GIF pasa de 5 MB. ffmpeg tiene que estar en el PATH.
 // No forma parte de check:all: es una herramienta manual, que necesita un navegador y ffmpeg.
 //
-// Uso: node scripts/record-demo.ts --navegador <ruta a chrome o msedge> [--salida docs/assets]
+// - --solo-og saca solo la imagen de Open Graph (og-demo.png, 1200×627): la tarjeta «Replay en marcha» en inglés, con la
+//   etiqueta DEMO de la barra superior a la vista. Emula el movimiento reducido, así que la tarjeta sale terminada.
+//
+// Uso: node scripts/record-demo.ts --navegador <ruta a chrome o msedge> [--salida docs/assets] [--solo-og]
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
@@ -119,7 +122,7 @@ async function screencast(cdp: Cdp, frames: string, seconds: number): Promise<nu
 }
 
 async function main(): Promise<void> {
-  const { values } = parseArgs({ options: { navegador: { type: 'string' }, salida: { type: 'string' } } });
+  const { values } = parseArgs({ options: { navegador: { type: 'string' }, salida: { type: 'string' }, 'solo-og': { type: 'boolean' } } });
   if (values.navegador === undefined) throw new Error('falta --navegador <ruta a chrome o msedge>');
   const out = values.salida ?? join('docs', 'assets');
   mkdirSync(out, { recursive: true });
@@ -141,6 +144,18 @@ async function main(): Promise<void> {
     if (page === undefined) throw new Error('el navegador no tiene ninguna página');
     const cdp = await Cdp.open(page.webSocketDebuggerUrl);
     await cdp.send('Page.enable');
+    if (values['solo-og'] === true) {
+      await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 627, deviceScaleFactor: 1, mobile: false });
+      await cdp.send('Page.navigate', { url });
+      await delay(1500);
+      await cdp.send('Runtime.evaluate', { expression: "window.scrollTo(0, document.querySelector('section.playback').getBoundingClientRect().top + window.scrollY - 70)" });
+      await delay(500);
+      await screenshot(cdp, join(out, 'og-demo.png'));
+      cdp.close();
+      process.stdout.write(`record-demo: ${join(out, 'og-demo.png')} (1200×627)\n`);
+      return;
+    }
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
     await cdp.send('Page.navigate', { url });
     await delay(1500);
