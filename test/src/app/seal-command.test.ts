@@ -21,6 +21,11 @@ test('exporta el sello a un .svg, en tamaño normal o pequeño', () => {
   assert.equal(run('--salida', small, '--pequeno').status, 0);
   assert.equal(readFileSync(small, 'utf8'), sealFile(true));
   assert.equal(run('--salida', join(dir, 'otro.svg'), '--anillo', 'puntos').status, 1, 'ya no hay variantes de anillo');
+  const clear = join(dir, 'transparente.svg');
+  assert.equal(run('--salida', clear, '--transparente').status, 0);
+  assert.equal(readFileSync(clear, 'utf8'), `${sealSvg({ standalone: true, transparent: true })}
+`);
+  assert.equal(readFileSync(clear, 'utf8'), sealFile(false, true));
 });
 
 test('no sobrescribe, exige .svg y sin salida enseña el uso', () => {

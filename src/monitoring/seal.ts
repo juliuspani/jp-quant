@@ -23,6 +23,7 @@ export interface SealOptions {
   readonly hash?: string; // por defecto, el primer commit
   readonly small?: boolean; // para 16 a 32 px
   readonly standalone?: boolean; // archivo .svg o favicon: con xmlns, fondo y color fijos; en la página, currentColor
+  readonly transparent?: boolean; // con standalone, sin el fondo: el sello tal cual se ve en la cabecera de la demo
   readonly className?: string;
 }
 
@@ -79,7 +80,7 @@ export function sealSvg(options: SealOptions = {}): string {
   const short = (options.hash ?? FIRST_COMMIT).slice(0, 7);
   const label = t(`Sello de ${PROJECT_NAME}, generado del primer commit ${short}`, `${PROJECT_NAME} seal, generated from the first commit ${short}`);
   if (options.standalone === true) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="${label}"><title>${label}</title><rect width="200" height="200" rx="40" fill="${SEAL_BACKGROUND}"/>${inner}${ringGroup}${monogram}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="${label}"><title>${label}</title>${options.transparent === true ? '' : `<rect width="200" height="200" rx="40" fill="${SEAL_BACKGROUND}"/>`}${inner}${ringGroup}${monogram}</svg>`;
   }
   const cls = options.className === undefined ? 'seal' : `seal ${options.className}`;
   return `<svg class="${cls}" viewBox="0 0 200 200" role="img" aria-label="${label}">${inner}${ringGroup}${monogram}</svg>`;

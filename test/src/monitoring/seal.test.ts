@@ -5,7 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { test } from 'node:test';
-import { FIRST_COMMIT, PROJECT_NAME, SEAL_MARKS, SealError, sealFavicon, sealProfile, sealSvg } from '../../../src/monitoring/seal.ts';
+import { readFileSync } from 'node:fs';
+import { FIRST_COMMIT, PROJECT_NAME, SEAL_ACCENT, SEAL_MARKS, SealError, sealFavicon, sealProfile, sealSvg } from '../../../src/monitoring/seal.ts';
 
 const ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const sha = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
@@ -53,4 +54,15 @@ test('sin datos personales: solo «JP», el nombre del proyecto y el hash corto;
   assert.match(inPage, /^<svg class="seal seal-top" viewBox="0 0 200 200" role="img"/);
   assert.ok(inPage.includes('stroke="currentColor"'), 'en la página toma el acento de la hoja de estilos');
   assert.doesNotMatch(inPage, /xmlns|#CFC6B4/);
+});
+
+test('el sello transparente es el de la cabecera de la demo: mismo dibujo, el acento y sin fondo', () => {
+  const solid = sealSvg({ standalone: true });
+  const clear = sealSvg({ standalone: true, transparent: true });
+  assert.equal(clear, solid.replace(/<rect [^>]*\/>/, ''), 'solo se quita el fondo');
+  const inner = (svg: string): string => svg.replace(/^<svg[^>]*>(<title>[^<]*<\/title>)?/, '').replace(/<\/svg>$/, '');
+  assert.equal(inner(clear), inner(sealSvg({ className: 'seal-top' })).replaceAll('currentColor', SEAL_ACCENT));
+  const page = readFileSync(resolve(ROOT, 'src', 'monitoring', 'dashboard-html.ts'), 'utf8');
+  assert.ok(page.includes(`--accent:${SEAL_ACCENT}`) && page.includes('.brand .seal{width:26px;height:26px;color:var(--accent)}'), 'la cabecera pinta el sello con el acento');
+  assert.equal(sealSvg({ transparent: true }), sealSvg(), 'en la página, la opción no cambia nada');
 });
