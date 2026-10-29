@@ -111,3 +111,18 @@ entrada para principiantes absolutos. Todo lo anterior se conserva intacto como 
    El primer push falló porque el token de `gh` no tenía el permiso `workflow`, y la persona lo añadió.
 9. **Enlace cruzado.** Una línea en el punto 3 de «Project story» del README de `jp-quant`, exportada con
    `docs/EXPORT_PUBLIC.md`.
+
+## Pulido final (2026-10-29, después del cierre del paso 50, la persona)
+
+1. **Comandos `/start` y `/handoff`** en `from-zero-to-repo`: antes eran `/arranque` y `/relevo`. Se comprobó con la
+   referencia oficial de comandos que ninguno choca con un comando integrado ni con un alias. `docs/es/start-here.md`
+   explica la equivalencia una vez, y una prueba impide que vuelvan los nombres antiguos. Este repositorio y `jp-quant`
+   siguen con `/arranque` y `/relevo`.
+2. **Sello en archivo:** `docs/assets/seal.svg` y `docs/assets/seal-512.png`, el sello de la cabecera de la demo, sin
+   fondo. Lo exporta la opción nueva `--transparente` de `npm run sello`, que solo quita el fondo. Las huellas fijadas no
+   cambian, y una prueba compara los archivos con el sello de la cabecera. La versión pública de `seal.test.ts` se
+   actualizó con su huella.
+3. **Logo** centrado de 96 px sobre el título del README de `jp-quant`.
+4. **Social previews definitivas:** la carpeta `social-previews` queda fuera de los repositorios, a la espera de las
+   imágenes de la persona.
+5. **CHANGELOG** de cada repositorio, como «Unreleased», sin etiquetas nuevas.

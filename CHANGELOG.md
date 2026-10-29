@@ -7,6 +7,18 @@ repository starts at v1.0.0 with a fresh history.
 
 "Plan B" is the old name of the **Autopilot** (passive DCA & rebalancing); entries before 1.1.0 keep it.
 
+## [Unreleased]
+
+### Added
+
+- **The seal as a file:** `docs/assets/seal.svg` and `docs/assets/seal-512.png` (512 × 512, transparent). It is the seal
+  in the header of the demo, generated from the first commit, and `npm run sello -- --salida <file.svg> --transparente`
+  exports it. The pinned fingerprints of the seal and the demo do not change.
+- **A logo in the README:** the seal, centred above the title.
+- **Open Graph and Twitter Card tags** on the published pages, with a 1200 × 627 preview image.
+- **A link to [From Zero to Repo](https://github.com/juliuspani/from-zero-to-repo)** in the project story: the working
+  method behind this project, as a beginner template.
+
 ## [1.1.0] — 2026-10-28
 
 What you can do now: test your own strategy, honestly, with one command.
