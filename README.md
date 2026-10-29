@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/seal.svg" width="96" height="96" alt="JP Quant seal"></p>
+
 # JP Quant
 
 **A tool to check honestly whether a trading strategy has a real edge or is just luck.**
