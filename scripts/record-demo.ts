@@ -1,5 +1,6 @@
-// Graba el GIF del README y la imagen de vista previa para redes desde la demo sintética (paso 49, ADR 0048). Nunca desde
-// un dashboard con datos reales: sirve las mismas páginas que `npm run demo`, en 127.0.0.1 y en un puerto libre.
+// Graba el GIF del README y la imagen de Open Graph desde la demo sintética (paso 49, ADR 0048). Nunca desde un dashboard
+// con datos reales: sirve las mismas páginas que `npm run demo`, en 127.0.0.1 y en un puerto libre. La vista previa para
+// redes (docs/assets/social-preview.png) la diseña la persona a mano desde el 2026-10-29: este script ya no la escribe.
 // - Abre un Chrome o Edge sin ventana (--navegador) y lo maneja por el DevTools Protocol con el WebSocket de Node: sin
 //   dependencias. El perfil del navegador es una carpeta temporal que se borra al terminar.
 // - Fluido sin tocar el script de la página (su hash está en la CSP): graba en tiempo real con el screencast del
@@ -164,10 +165,6 @@ async function main(): Promise<void> {
     await cdp.send('Runtime.evaluate', { expression: "window.scrollTo(0, document.querySelector('section.playback').getBoundingClientRect().top + window.scrollY - 70)" });
     await delay(300);
     const count = await screencast(cdp, frames, RECORD_SECONDS);
-    // Vista previa para redes: 1280×640, al final del recorrido.
-    await cdp.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: 640, deviceScaleFactor: 1, mobile: false });
-    await delay(500);
-    await screenshot(cdp, join(out, 'social-preview.png'));
     cdp.close();
     const gif = join(out, 'demo.gif');
     const ff = spawnSync('ffmpeg', [

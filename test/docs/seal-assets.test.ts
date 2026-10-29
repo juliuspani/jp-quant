@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { sealFile } from '../../src/app/seal-command.ts';
+import { SEAL_ACCENT, SEAL_ACCENT_LIGHT } from '../../src/monitoring/seal.ts';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 
@@ -30,4 +31,22 @@ test('docs/assets/seal-512.png mide 512 × 512, tiene canal alfa y la esquina es
   // El primer píxel de la primera fila no depende de ningún vecino con ningún filtro: su alfa es el byte tal cual.
   const raw = inflateSync(Buffer.concat(idat));
   assert.equal(raw[1 + 3], 0, 'la esquina superior izquierda es transparente');
+});
+
+test('docs/assets/seal-light.svg es el mismo sello sin fondo, en el color oscuro para el tema claro, con contraste ≥ 4,5:1 sobre blanco', () => {
+  const light = readFileSync(resolve(ROOT, 'docs', 'assets', 'seal-light.svg'), 'utf8');
+  assert.equal(light, sealFile(false, true, true));
+  assert.equal(light, sealFile(false, true).replaceAll(SEAL_ACCENT, SEAL_ACCENT_LIGHT), 'mismo dibujo, solo cambia el color');
+  const channel = (hex: string): number => {
+    const c = Number.parseInt(hex, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const [r, g, b] = [1, 3, 5].map((i) => channel(SEAL_ACCENT_LIGHT.slice(i, i + 2)));
+  const luminance = 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+  assert.ok(1.05 / (luminance + 0.05) >= 4.5, 'contraste sobre blanco');
+});
+
+test('el README muestra el sello beige en tema oscuro y el oscuro en tema claro', () => {
+  const readme = readFileSync(resolve(ROOT, 'README.md'), 'utf8');
+  assert.ok(readme.startsWith('<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/seal.svg"><img src="docs/assets/seal-light.svg" width="96" height="96" alt="JP Quant seal"></picture></p>\n'));
 });

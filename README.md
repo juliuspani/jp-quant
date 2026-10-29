@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/assets/seal.svg" width="96" height="96" alt="JP Quant seal"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/seal.svg"><img src="docs/assets/seal-light.svg" width="96" height="96" alt="JP Quant seal"></picture></p>
 
 # JP Quant
 

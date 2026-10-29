@@ -12,6 +12,7 @@ import { t } from './i18n.ts';
 export const PROJECT_NAME = 'JP Quant';
 export const FIRST_COMMIT = '902eb0a7a7cc618c1c00d9de9f21522dc571fad8';
 export const SEAL_ACCENT = '#CFC6B4';
+export const SEAL_ACCENT_LIGHT = '#5A5346'; // el acento para fondos claros (el README en el tema claro de GitHub)
 export const SEAL_BACKGROUND = '#0A0A0A';
 export const SEAL_MARKS = 64;
 
@@ -24,6 +25,7 @@ export interface SealOptions {
   readonly small?: boolean; // para 16 a 32 px
   readonly standalone?: boolean; // archivo .svg o favicon: con xmlns, fondo y color fijos; en la página, currentColor
   readonly transparent?: boolean; // con standalone, sin el fondo: el sello tal cual se ve en la cabecera de la demo
+  readonly light?: boolean; // con standalone, el acento oscuro para fondos claros
   readonly className?: string;
 }
 
@@ -73,7 +75,7 @@ export function sealSvg(options: SealOptions = {}): string {
     const width = small ? 6 + 2 * w : 0.8 + 1.0 * w;
     marks.push(`<line x1="${f(100 + inner * cos)}" y1="${f(100 + inner * sin)}" x2="${f(100 + outer * cos)}" y2="${f(100 + outer * sin)}" stroke-width="${f(width)}"/>`);
   }
-  const color = options.standalone === true ? SEAL_ACCENT : 'currentColor';
+  const color = options.standalone === true ? (options.light === true ? SEAL_ACCENT_LIGHT : SEAL_ACCENT) : 'currentColor';
   const ringGroup = `<g fill="none" stroke="${color}" stroke-linecap="round">${marks.join('')}</g>`;
   const inner = small ? '' : `<circle cx="100" cy="100" r="57" fill="none" stroke="${color}" stroke-width="0.8" stroke-opacity="0.45"/>`;
   const monogram = `<path d="${MONOGRAM}" fill="none" stroke="${color}" stroke-width="${small ? '12' : '3.4'}" stroke-linecap="round" stroke-linejoin="round"/>`;

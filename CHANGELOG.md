@@ -14,7 +14,10 @@ repository starts at v1.0.0 with a fresh history.
 - **The seal as a file:** `docs/assets/seal.svg` and `docs/assets/seal-512.png` (512 × 512, transparent). It is the seal
   in the header of the demo, generated from the first commit, and `npm run sello -- --salida <file.svg> --transparente`
   exports it. The pinned fingerprints of the seal and the demo do not change.
-- **A logo in the README:** the seal, centred above the title.
+- **A logo in the README:** the seal, centred above the title. GitHub shows the beige seal in dark mode and a dark one
+  (`docs/assets/seal-light.svg`, `#5A5346`, `--claro`) in light mode, with the same drawing.
+- **A new social preview** (`docs/assets/social-preview.png`, 1280 × 640), designed by hand. `scripts/record-demo.ts`
+  no longer writes it, so re-recording the demo cannot overwrite it.
 - **Open Graph and Twitter Card tags** on the published pages, with a 1200 × 627 preview image.
 - **A link to [From Zero to Repo](https://github.com/juliuspani/from-zero-to-repo)** in the project story: the working
   method behind this project, as a beginner template.
