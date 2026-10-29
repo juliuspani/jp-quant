@@ -175,6 +175,7 @@ I'm a student, and this is how it went, in short. The long version is in [STORY.
    winning.
 3. **Building with AI agents, under control.** I built it with AI coding agents. They worked inside written rules, with
    automatic checks that block anything dangerous, read-only reviewers and a stop at every step until I approved it.
+   The method is now a beginner template: [From Zero to Repo](https://github.com/juliuspani/from-zero-to-repo).
 4. **A backtester I could trust.** Next came historical data with no look-ahead, real costs and a replay that gives the
    same result every time, plus a registry where every test is written down before it runs, failed ones included.
 5. **The first results, and a bug.** Two classic strategies were tested against criteria frozen in advance. An internal
